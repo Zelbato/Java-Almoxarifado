@@ -45,10 +45,10 @@ public class FuncionarioDAO {
             statement.setString(3, funcionario.getCpf());
             statement.setString(4, funcionario.getTelefone());
 
-            if (funcionario.getData_admissao() != null) {
+            if (funcionario.getDataAdmissao() != null) {
                 statement.setDate(
                         5,
-                        Date.valueOf(funcionario.getData_admissao())
+                        Date.valueOf(funcionario.getDataAdmissao())
                 );
             } else {
                 statement.setNull(
@@ -59,10 +59,10 @@ public class FuncionarioDAO {
 
             statement.setString(6, funcionario.getEmail());
 
-            if (funcionario.getData_demissao() != null) {
+            if (funcionario.getDataDemissao() != null) {
                 statement.setDate(
                         7,
-                        Date.valueOf(funcionario.getData_demissao())
+                        Date.valueOf(funcionario.getDataDemissao())
                 );
             } else {
                 statement.setNull(
@@ -161,10 +161,10 @@ public class FuncionarioDAO {
             statement.setString(3, funcionario.getCpf());
             statement.setString(4, funcionario.getTelefone());
 
-            if (funcionario.getData_admissao() != null) {
+            if (funcionario.getDataAdmissao() != null) {
                 statement.setDate(
                         5,
-                        Date.valueOf(funcionario.getData_admissao())
+                        Date.valueOf(funcionario.getDataAdmissao())
                 );
             } else {
                 statement.setNull(
@@ -175,10 +175,10 @@ public class FuncionarioDAO {
 
             statement.setString(6, funcionario.getEmail());
 
-            if (funcionario.getData_demissao() != null) {
+            if (funcionario.getDataDemissao() != null) {
                 statement.setDate(
                         7,
-                        Date.valueOf(funcionario.getData_demissao())
+                        Date.valueOf(funcionario.getDataDemissao())
                 );
             } else {
                 statement.setNull(
@@ -295,7 +295,7 @@ public class FuncionarioDAO {
                 = resultSet.getDate("data_admissao");
 
         if (dataAdmissao != null) {
-            funcionario.setData_admissao(
+            funcionario.setDataAdmissao(
                     dataAdmissao.toLocalDate()
             );
         }
@@ -308,7 +308,7 @@ public class FuncionarioDAO {
                 = resultSet.getDate("data_demissao");
 
         if (dataDemissao != null) {
-            funcionario.setData_demissao(
+            funcionario.setDataDemissao(
                     dataDemissao.toLocalDate()
             );
         }

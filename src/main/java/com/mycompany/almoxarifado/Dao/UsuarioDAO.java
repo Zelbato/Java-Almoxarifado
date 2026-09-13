@@ -4,7 +4,7 @@
  */
 package com.mycompany.almoxarifado.Dao;
 
-import com.mycompany.almoxarifado.Dto.UsuárioDTO;
+import com.mycompany.almoxarifado.Dto.UsuarioDTO;
 import com.mycompany.almoxarifado.config.DatabaseConnection;
 
 import java.sql.Connection;
@@ -22,7 +22,7 @@ import java.util.List;
  */
 public class UsuarioDAO {
 
-    public void cadastrar(UsuárioDTO usuario) throws SQLException {
+    public void cadastrar(UsuarioDTO usuario, String senhaHash) throws SQLException {
 
         String sql = """
                  INSERT INTO usuario (
@@ -32,9 +32,10 @@ public class UsuarioDAO {
                      email,
                      senha,
                      cpf,
+                     data_nascimento,
                      ativo
                  )
-                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                  """;
 
         try (
@@ -49,15 +50,22 @@ public class UsuarioDAO {
             statement.setLong(2, usuario.getIdTipoUsuario());
             statement.setString(3, usuario.getNome());
             statement.setString(4, usuario.getEmail());
-            statement.setString(5, usuario.getSenha());
+            statement.setString(5, senhaHash);
             statement.setString(6, usuario.getCpf());
-            statement.setBoolean(7, usuario.isAtivo());
+
+            if (usuario.getDataNascimento() != null) {
+                statement.setDate(7, Date.valueOf(usuario.getDataNascimento()));
+            } else {
+                statement.setNull(7, java.sql.Types.DATE);
+            }
+
+            statement.setBoolean(8, usuario.isAtivo());
 
             statement.executeUpdate();
         }
     }
 
-    public List<UsuárioDTO> listarTodos() throws SQLException {
+    public List<UsuarioDTO> listarTodos() throws SQLException {
 
         String sql = """
                  SELECT
@@ -66,14 +74,14 @@ public class UsuarioDAO {
                      id_tipo_usuario,
                      nome,
                      email,
-                     senha,
                      cpf,
+                     data_nascimento,
                      ativo
                  FROM usuario
                  ORDER BY id_usuario ASC
                  """;
 
-        List<UsuárioDTO> usuarios = new ArrayList<>();
+        List<UsuarioDTO> usuarios = new ArrayList<>();
 
         try (
                 Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql); ResultSet resultSet = statement.executeQuery()) {
@@ -86,7 +94,7 @@ public class UsuarioDAO {
         return usuarios;
     }
 
-    public UsuárioDTO buscarPorId(Long id) throws SQLException {
+    public UsuarioDTO buscarPorId(Long id) throws SQLException {
 
         String sql = """
                  SELECT
@@ -95,8 +103,8 @@ public class UsuarioDAO {
                      id_tipo_usuario,
                      nome,
                      email,
-                     senha,
                      cpf,
+                     data_nascimento,
                      ativo
                  FROM usuario
                  WHERE id_usuario = ?
@@ -118,7 +126,7 @@ public class UsuarioDAO {
         return null;
     }
 
-    public void atualizar(UsuárioDTO usuario) throws SQLException {
+    public void atualizar(UsuarioDTO usuario) throws SQLException {
 
         String sql = """
                  UPDATE usuario
@@ -126,8 +134,8 @@ public class UsuarioDAO {
                      id_tipo_usuario = ?,
                      nome = ?,
                      email = ?,
-                     senha = ?,
                      cpf = ?,
+                     data_nascimento = ?,
                      ativo = ?
                  WHERE id_usuario = ?
                  """;
@@ -144,8 +152,14 @@ public class UsuarioDAO {
             statement.setLong(2, usuario.getIdTipoUsuario());
             statement.setString(3, usuario.getNome());
             statement.setString(4, usuario.getEmail());
-            statement.setString(5, usuario.getSenha());
-            statement.setString(6, usuario.getCpf());
+            statement.setString(5, usuario.getCpf());
+
+            if (usuario.getDataNascimento() != null) {
+                statement.setDate(6, Date.valueOf(usuario.getDataNascimento()));
+            } else {
+                statement.setNull(6, java.sql.Types.DATE);
+            }
+
             statement.setBoolean(7, usuario.isAtivo());
             statement.setLong(8, usuario.getIdUsuario());
 
@@ -165,6 +179,21 @@ public class UsuarioDAO {
 
             statement.setLong(1, id);
 
+            statement.executeUpdate();
+        }
+    }
+
+    public void atualizarSenha(Long idUsuario, String senhaHash) throws SQLException {
+        String sql = """
+                 UPDATE usuario
+                 SET senha = ?
+                 WHERE id_usuario = ?
+                 """;
+
+        try (
+                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, senhaHash);
+            statement.setLong(2, idUsuario);
             statement.executeUpdate();
         }
     }
@@ -275,11 +304,11 @@ public class UsuarioDAO {
         return false;
     }
 
-    private UsuárioDTO converterResultSet(
+    private UsuarioDTO converterResultSet(
             ResultSet resultSet
     ) throws SQLException {
 
-        UsuárioDTO usuario = new UsuárioDTO();
+        UsuarioDTO usuario = new UsuarioDTO();
 
         usuario.setIdUsuario(
                 resultSet.getLong("id_usuario")
@@ -302,13 +331,15 @@ public class UsuarioDAO {
                 resultSet.getString("email")
         );
 
-        usuario.setSenha(
-                resultSet.getString("senha")
-        );
-
         usuario.setCpf(
                 resultSet.getString("cpf")
         );
+
+        Date dataNascimento = resultSet.getDate("data_nascimento");
+
+        if (dataNascimento != null) {
+            usuario.setDataNascimento(dataNascimento.toLocalDate());
+        }
 
         usuario.setAtivo(
                 resultSet.getBoolean("ativo")

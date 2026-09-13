@@ -10,7 +10,7 @@ package com.mycompany.almoxarifado.Dto;
  */
 public class SetorDTO {
     
-    private Long IdSetor;
+    private Long idSetor;
     private String nome;
     private String descricao;
     private boolean ativo;
@@ -18,19 +18,19 @@ public class SetorDTO {
     public SetorDTO() {
     }
 
-    public SetorDTO(Long IdSetor, String nome, String descricao, boolean ativo) {
-        this.IdSetor = IdSetor;
+    public SetorDTO(Long idSetor, String nome, String descricao, boolean ativo) {
+        this.idSetor = idSetor;
         this.nome = nome;
         this.descricao = descricao;
         this.ativo = ativo;
     }
 
     public Long getIdSetor() {
-        return IdSetor;
+        return idSetor;
     }
 
-    public void setIdSetor(Long IdSetor) {
-        this.IdSetor = IdSetor;
+    public void setIdSetor(Long idSetor) {
+        this.idSetor = idSetor;
     }
 
     public String getNome() {

@@ -17,9 +17,9 @@ public class FuncionarioDTO {
     private String nome;    
     private String cpf;
     private String telefone;
-    private LocalDate data_admissao;
+    private LocalDate dataAdmissao;
     private String email;
-    private LocalDate data_demissao;
+    private LocalDate dataDemissao;
 
     public FuncionarioDTO() {
     }
@@ -64,12 +64,12 @@ public class FuncionarioDTO {
         this.telefone = telefone;
     }
 
-    public LocalDate getData_admissao() {
-        return data_admissao;
+    public LocalDate getDataAdmissao() {
+        return dataAdmissao;
     }
 
-    public void setData_admissao(LocalDate data_admissao) {
-        this.data_admissao = data_admissao;
+    public void setDataAdmissao(LocalDate dataAdmissao) {
+        this.dataAdmissao = dataAdmissao;
     }
 
     public String getEmail() {
@@ -80,12 +80,12 @@ public class FuncionarioDTO {
         this.email = email;
     }
 
-    public LocalDate getData_demissao() {
-        return data_demissao;
+    public LocalDate getDataDemissao() {
+        return dataDemissao;
     }
 
-    public void setData_demissao(LocalDate data_demissao) {
-        this.data_demissao = data_demissao;
+    public void setDataDemissao(LocalDate dataDemissao) {
+        this.dataDemissao = dataDemissao;
     }
     
     

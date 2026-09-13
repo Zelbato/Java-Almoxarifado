@@ -5,7 +5,7 @@ import com.mycompany.almoxarifado.Dao.FuncionarioDAO;
 import com.mycompany.almoxarifado.Dao.MovimentacaoDAO;
 import com.mycompany.almoxarifado.Dao.StatusMovimentacaoDAO;
 import com.mycompany.almoxarifado.Dao.UsuarioDAO;
-import com.mycompany.almoxarifado.Dto.MovimentaçãoDTO;
+import com.mycompany.almoxarifado.Dto.MovimentacaoDTO;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -30,7 +30,7 @@ public class MovimentacaoService {
         this.statusMovimentacaoDAO = new StatusMovimentacaoDAO();
     }
 
-    public void cadastrar(MovimentaçãoDTO movimentacao) throws SQLException {
+    public void cadastrar(MovimentacaoDTO movimentacao) throws SQLException {
 
         validar(movimentacao);
         validarRelacionamentos(movimentacao);
@@ -38,15 +38,15 @@ public class MovimentacaoService {
         movimentacaoDAO.cadastrar(movimentacao);
     }
 
-    public List<MovimentaçãoDTO> listarTodos() throws SQLException {
+    public List<MovimentacaoDTO> listarTodos() throws SQLException {
         return movimentacaoDAO.listarTodos();
     }
 
-    public MovimentaçãoDTO buscarPorId(Long id) throws SQLException {
+    public MovimentacaoDTO buscarPorId(Long id) throws SQLException {
 
         validarId(id);
 
-        MovimentaçãoDTO movimentacao = movimentacaoDAO.buscarPorId(id);
+        MovimentacaoDTO movimentacao = movimentacaoDAO.buscarPorId(id);
 
         if (movimentacao == null) {
             throw new IllegalArgumentException(
@@ -57,7 +57,7 @@ public class MovimentacaoService {
         return movimentacao;
     }
 
-    public void atualizar(MovimentaçãoDTO movimentacao) throws SQLException {
+    public void atualizar(MovimentacaoDTO movimentacao) throws SQLException {
 
         if (movimentacao == null) {
             throw new IllegalArgumentException(
@@ -69,7 +69,7 @@ public class MovimentacaoService {
         validar(movimentacao);
         validarRelacionamentos(movimentacao);
 
-        MovimentaçãoDTO movimentacaoExistente =
+        MovimentacaoDTO movimentacaoExistente =
                 movimentacaoDAO.buscarPorId(
                         movimentacao.getIdMovimentacao()
                 );
@@ -87,7 +87,7 @@ public class MovimentacaoService {
 
         validarId(id);
 
-        MovimentaçãoDTO movimentacao =
+        MovimentacaoDTO movimentacao =
                 movimentacaoDAO.buscarPorId(id);
 
         if (movimentacao == null) {
@@ -99,7 +99,7 @@ public class MovimentacaoService {
         movimentacaoDAO.excluir(id);
     }
 
-    private void validar(MovimentaçãoDTO movimentacao) {
+    private void validar(MovimentacaoDTO movimentacao) {
 
         if (movimentacao == null) {
             throw new IllegalArgumentException(
@@ -227,7 +227,7 @@ public class MovimentacaoService {
     }
 
     private void validarRelacionamentos(
-            MovimentaçãoDTO movimentacao
+            MovimentacaoDTO movimentacao
     ) throws SQLException {
 
         if (equipamentoDAO.buscarPorId(
@@ -267,12 +267,37 @@ public class MovimentacaoService {
             );
         }
 
-        if (statusMovimentacaoDAO.buscarPorId(
+        var status = statusMovimentacaoDAO.buscarPorId(
                 movimentacao.getIdStatusMovimentacao()
-        ) == null) {
+        );
+
+        if (status == null) {
 
             throw new IllegalArgumentException(
                     "Status da movimentação não encontrado."
+            );
+        }
+
+        validarDevolucaoPorStatus(movimentacao, status.getNome());
+    }
+
+    private void validarDevolucaoPorStatus(
+            MovimentacaoDTO movimentacao,
+            String nomeStatus
+    ) {
+        boolean devolvida = "DEVOLVIDA".equals(nomeStatus);
+        boolean possuiDadosDevolucao = movimentacao.getDataDevolucao() != null
+                && movimentacao.getIdUsuarioDevolucao() != null;
+
+        if (devolvida && !possuiDadosDevolucao) {
+            throw new IllegalArgumentException(
+                    "Uma movimentação devolvida exige data e usuário da devolução."
+            );
+        }
+
+        if (!devolvida && possuiDadosDevolucao) {
+            throw new IllegalArgumentException(
+                    "Dados de devolução só podem ser informados para movimentações devolvidas."
             );
         }
     }

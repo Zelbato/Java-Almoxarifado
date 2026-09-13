@@ -63,6 +63,15 @@ public class CategoriaService {
             throw new IllegalArgumentException("Categoria não encontrada.");
         }
 
+        if (categoriaDAO.existePorNomeDiferenteDoId(
+                categoria.getNome(),
+                categoria.getIdCategoria()
+        )) {
+            throw new IllegalArgumentException(
+                    "Já existe outra categoria com esse nome."
+            );
+        }
+
         categoriaDAO.atualizar(categoria);
     }
 

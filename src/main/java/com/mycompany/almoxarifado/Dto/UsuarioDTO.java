@@ -10,7 +10,7 @@ import java.time.LocalDate;
  *
  * @author heito
  */
-public class UsuárioDTO {
+public class UsuarioDTO {
 
     private Long idUsuario;
     private Long idFuncionario;
@@ -19,10 +19,10 @@ public class UsuárioDTO {
     private String email;
     private String senha;
     private String cpf;
-    private LocalDate data_nascimento;
+    private LocalDate dataNascimento;
     private boolean ativo;
 
-    public UsuárioDTO() {
+    public UsuarioDTO() {
     }
 
     public Long getIdFuncionario() {
@@ -81,12 +81,12 @@ public class UsuárioDTO {
         this.cpf = cpf;
     }
 
-    public LocalDate getData_nascimento() {
-        return data_nascimento;
+    public LocalDate getDataNascimento() {
+        return dataNascimento;
     }
 
-    public void setData_nascimento(LocalDate data_nascimento) {
-        this.data_nascimento = data_nascimento;
+    public void setDataNascimento(LocalDate dataNascimento) {
+        this.dataNascimento = dataNascimento;
     }
 
     public boolean isAtivo() {

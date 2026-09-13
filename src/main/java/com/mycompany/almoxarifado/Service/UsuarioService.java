@@ -3,10 +3,12 @@ package com.mycompany.almoxarifado.Service;
 import com.mycompany.almoxarifado.Dao.FuncionarioDAO;
 import com.mycompany.almoxarifado.Dao.TipoUsuarioDAO;
 import com.mycompany.almoxarifado.Dao.UsuarioDAO;
-import com.mycompany.almoxarifado.Dto.UsuárioDTO;
-
+import com.mycompany.almoxarifado.Dto.UsuarioDTO;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
  *
@@ -24,9 +26,9 @@ public class UsuarioService {
         this.tipoUsuarioDAO = new TipoUsuarioDAO();
     }
 
-    public void cadastrar(UsuárioDTO usuario) throws SQLException {
+    public void cadastrar(UsuarioDTO usuario) throws SQLException {
 
-        validar(usuario);
+        validar(usuario, true);
         validarFuncionario(usuario.getIdFuncionario());
         validarTipoUsuario(usuario.getIdTipoUsuario());
 
@@ -42,18 +44,18 @@ public class UsuarioService {
             );
         }
 
-        usuarioDAO.cadastrar(usuario);
+        usuarioDAO.cadastrar(usuario, gerarHashSenha(usuario.getSenha()));
     }
 
-    public List<UsuárioDTO> listarTodos() throws SQLException {
+    public List<UsuarioDTO> listarTodos() throws SQLException {
         return usuarioDAO.listarTodos();
     }
 
-    public UsuárioDTO buscarPorId(Long id) throws SQLException {
+    public UsuarioDTO buscarPorId(Long id) throws SQLException {
 
         validarId(id);
 
-        UsuárioDTO usuario = usuarioDAO.buscarPorId(id);
+        UsuarioDTO usuario = usuarioDAO.buscarPorId(id);
 
         if (usuario == null) {
             throw new IllegalArgumentException(
@@ -64,7 +66,7 @@ public class UsuarioService {
         return usuario;
     }
 
-    public void atualizar(UsuárioDTO usuario) throws SQLException {
+    public void atualizar(UsuarioDTO usuario) throws SQLException {
 
         if (usuario == null) {
             throw new IllegalArgumentException(
@@ -73,11 +75,11 @@ public class UsuarioService {
         }
 
         validarId(usuario.getIdUsuario());
-        validar(usuario);
+        validar(usuario, false);
         validarFuncionario(usuario.getIdFuncionario());
         validarTipoUsuario(usuario.getIdTipoUsuario());
 
-        UsuárioDTO usuarioExistente =
+        UsuarioDTO usuarioExistente =
                 usuarioDAO.buscarPorId(usuario.getIdUsuario());
 
         if (usuarioExistente == null) {
@@ -105,13 +107,20 @@ public class UsuarioService {
         }
 
         usuarioDAO.atualizar(usuario);
+
+        if (usuario.getSenha() != null && !usuario.getSenha().isBlank()) {
+            usuarioDAO.atualizarSenha(
+                    usuario.getIdUsuario(),
+                    gerarHashSenha(usuario.getSenha())
+            );
+        }
     }
 
     public void excluir(Long id) throws SQLException {
 
         validarId(id);
 
-        UsuárioDTO usuario = usuarioDAO.buscarPorId(id);
+        UsuarioDTO usuario = usuarioDAO.buscarPorId(id);
 
         if (usuario == null) {
             throw new IllegalArgumentException(
@@ -122,7 +131,7 @@ public class UsuarioService {
         usuarioDAO.excluir(id);
     }
 
-    private void validar(UsuárioDTO usuario) {
+    private void validar(UsuarioDTO usuario, boolean senhaObrigatoria) {
 
         if (usuario == null) {
             throw new IllegalArgumentException(
@@ -182,19 +191,14 @@ public class UsuarioService {
             );
         }
 
-        if (usuario.getSenha() == null
-                || usuario.getSenha().isBlank()) {
-
+        if (usuario.getDataNascimento() != null
+                && usuario.getDataNascimento().isAfter(LocalDate.now())) {
             throw new IllegalArgumentException(
-                    "A senha é obrigatória."
+                    "A data de nascimento não pode estar no futuro."
             );
         }
 
-        if (usuario.getSenha().length() > 255) {
-            throw new IllegalArgumentException(
-                    "A senha deve possuir no máximo 255 caracteres."
-            );
-        }
+        validarSenha(usuario.getSenha(), senhaObrigatoria);
 
         if (usuario.getCpf() == null
                 || usuario.getCpf().isBlank()) {
@@ -242,5 +246,32 @@ public class UsuarioService {
                     "Tipo de usuário não encontrado."
             );
         }
+    }
+
+    private void validarSenha(String senha, boolean obrigatoria) {
+        if (senha == null || senha.isBlank()) {
+            if (obrigatoria) {
+                throw new IllegalArgumentException("A senha é obrigatória.");
+            }
+            return;
+        }
+
+        int tamanhoEmBytes = senha.getBytes(StandardCharsets.UTF_8).length;
+
+        if (tamanhoEmBytes < 8) {
+            throw new IllegalArgumentException(
+                    "A senha deve possuir pelo menos 8 caracteres."
+            );
+        }
+
+        if (tamanhoEmBytes > 72) {
+            throw new IllegalArgumentException(
+                    "A senha deve possuir no máximo 72 bytes."
+            );
+        }
+    }
+
+    private String gerarHashSenha(String senha) {
+        return BCrypt.hashpw(senha, BCrypt.gensalt(12));
     }
 }

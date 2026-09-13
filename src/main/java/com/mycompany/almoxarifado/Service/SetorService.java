@@ -66,6 +66,13 @@ public class SetorService {
             throw new IllegalArgumentException("Setor não encontrado");
         }
 
+        if (setorDAO.existePorNomeDiferenteDoId(
+                setor.getNome(),
+                setor.getIdSetor()
+        )) {
+            throw new IllegalArgumentException("Já existe outro setor com esse nome.");
+        }
+
         setorDAO.atualizar(setor);
     }
 

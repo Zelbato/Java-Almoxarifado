@@ -4,7 +4,7 @@
  */
 package com.mycompany.almoxarifado.Dao;
 
-import com.mycompany.almoxarifado.Dto.MovimentaçãoDTO;
+import com.mycompany.almoxarifado.Dto.MovimentacaoDTO;
 import com.mycompany.almoxarifado.config.DatabaseConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,7 +20,7 @@ import java.util.List;
  */
 public class MovimentacaoDAO {
 
-    public void cadastrar(MovimentaçãoDTO movimentacao) throws SQLException {
+    public void cadastrar(MovimentacaoDTO movimentacao) throws SQLException {
 
         String sql = """
                  INSERT INTO movimentacao (
@@ -81,7 +81,7 @@ public class MovimentacaoDAO {
         }
     }
 
-    public List<MovimentaçãoDTO> listarTodos() throws SQLException {
+    public List<MovimentacaoDTO> listarTodos() throws SQLException {
 
         String sql = """
                  SELECT
@@ -101,7 +101,7 @@ public class MovimentacaoDAO {
                  ORDER BY id_movimentacao ASC
                  """;
 
-        List<MovimentaçãoDTO> movimentacoes = new ArrayList<>();
+        List<MovimentacaoDTO> movimentacoes = new ArrayList<>();
 
         try (
                 Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql); ResultSet resultSet = statement.executeQuery()) {
@@ -114,7 +114,7 @@ public class MovimentacaoDAO {
         return movimentacoes;
     }
 
-    public MovimentaçãoDTO buscarPorId(Long id) throws SQLException {
+    public MovimentacaoDTO buscarPorId(Long id) throws SQLException {
 
         String sql = """
                  SELECT
@@ -150,7 +150,7 @@ public class MovimentacaoDAO {
         return null;
     }
 
-    public void atualizar(MovimentaçãoDTO movimentacao) throws SQLException {
+    public void atualizar(MovimentacaoDTO movimentacao) throws SQLException {
 
         String sql = """
                  UPDATE movimentacao
@@ -227,11 +227,11 @@ public class MovimentacaoDAO {
         }
     }
 
-    private MovimentaçãoDTO converterResultSet(
+    private MovimentacaoDTO converterResultSet(
             ResultSet resultSet
     ) throws SQLException {
 
-        MovimentaçãoDTO movimentacao = new MovimentaçãoDTO();
+        MovimentacaoDTO movimentacao = new MovimentacaoDTO();
 
         movimentacao.setIdMovimentacao(
                 resultSet.getLong("id_movimentacao")

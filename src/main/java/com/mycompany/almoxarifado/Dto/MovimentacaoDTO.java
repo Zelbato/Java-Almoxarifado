@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  *
  * @author heito
  */
-public class MovimentaçãoDTO {
+public class MovimentacaoDTO {
 
     private Long idMovimentacao;
 
@@ -28,7 +28,7 @@ public class MovimentaçãoDTO {
     private String observacaoRetirada;
     private String observacaoDevolucao;
 
-    public MovimentaçãoDTO() {
+    public MovimentacaoDTO() {
     }
 
     public Long getIdMovimentacao() {

@@ -260,4 +260,53 @@ public class LocalizacaoDAO {
 
         return false;
     }
+
+    public boolean existeDiferenteDoId(
+            String nome,
+            Integer corredor,
+            Integer prateleira,
+            Long idLocalizacao
+    ) throws SQLException {
+        String sql = """
+                     SELECT COUNT(*)
+                     FROM localizacao
+                     WHERE LOWER(nome) = LOWER(?)
+                       AND (
+                           corredor = ?
+                           OR (corredor IS NULL AND ? IS NULL)
+                       )
+                       AND (
+                           prateleira = ?
+                           OR (prateleira IS NULL AND ? IS NULL)
+                       )
+                       AND id_localizacao <> ?
+                     """;
+
+        try (
+                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nome);
+
+            if (corredor != null) {
+                statement.setInt(2, corredor);
+                statement.setInt(3, corredor);
+            } else {
+                statement.setNull(2, java.sql.Types.INTEGER);
+                statement.setNull(3, java.sql.Types.INTEGER);
+            }
+
+            if (prateleira != null) {
+                statement.setInt(4, prateleira);
+                statement.setInt(5, prateleira);
+            } else {
+                statement.setNull(4, java.sql.Types.INTEGER);
+                statement.setNull(5, java.sql.Types.INTEGER);
+            }
+
+            statement.setLong(6, idLocalizacao);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
 }

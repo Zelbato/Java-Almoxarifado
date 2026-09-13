@@ -173,10 +173,10 @@ public class FuncionarioService {
             );
         }
 
-        if (funcionario.getData_admissao() != null
-                && funcionario.getData_demissao() != null
-                && funcionario.getData_demissao()
-                        .isBefore(funcionario.getData_admissao())) {
+        if (funcionario.getDataAdmissao() != null
+                && funcionario.getDataDemissao() != null
+                && funcionario.getDataDemissao()
+                        .isBefore(funcionario.getDataAdmissao())) {
 
             throw new IllegalArgumentException(
                     "A data de demissão não pode ser anterior à data de admissão."

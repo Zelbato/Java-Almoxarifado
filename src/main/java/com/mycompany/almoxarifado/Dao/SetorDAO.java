@@ -172,4 +172,26 @@ public class SetorDAO {
         return false;
     }
 
+    public boolean existePorNomeDiferenteDoId(
+            String nome,
+            Long idSetor
+    ) throws SQLException {
+        String sql = """
+                 SELECT COUNT(*)
+                 FROM setor
+                 WHERE LOWER(nome) = LOWER(?)
+                   AND id_setor <> ?
+                 """;
+
+        try (
+                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nome);
+            statement.setLong(2, idSetor);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
+
 }

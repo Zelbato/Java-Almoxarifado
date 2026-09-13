@@ -167,4 +167,26 @@ public class CategoriaDAO {
 
         return false;
     }
+
+    public boolean existePorNomeDiferenteDoId(
+            String nome,
+            Long idCategoria
+    ) throws SQLException {
+        String sql = """
+                     SELECT COUNT(*)
+                     FROM categoria
+                     WHERE LOWER(nome) = LOWER(?)
+                       AND id_categoria <> ?
+                     """;
+
+        try (
+                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, nome);
+            statement.setLong(2, idCategoria);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getInt(1) > 0;
+            }
+        }
+    }
 }

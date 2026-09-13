@@ -78,6 +78,17 @@ public class LocalizacaoService {
             );
         }
 
+        if (localizacaoDAO.existeDiferenteDoId(
+                localizacao.getNome(),
+                localizacao.getCorredor(),
+                localizacao.getPrateleira(),
+                localizacao.getIdLocalizacao()
+        )) {
+            throw new IllegalArgumentException(
+                    "Já existe outra localização com esses dados."
+            );
+        }
+
         localizacaoDAO.atualizar(localizacao);
     }
 
