@@ -1,0 +1,26 @@
+/**
+ * Author:  heito
+ * Created: 15 de ago. de 2026
+ */
+
+CREATE TABLE usuario (
+id_usuario BIGINT AUTO_INCREMENT PRIMARY KEY,
+fk_funcionario BIGINT NULL, 
+
+nome VARCHAR(150) NOT NULL, 
+email VARCHAR(150) NOT NULL UNIQUE, 
+senha VARCHAR(255) NOT NULL, 
+cpf VARCHAR(14) NOT NULL UNIQUE,
+
+data_cadastro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ativo BOOLEAN NOT NULL DEFAULT TRUE,
+
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+CONSTRAINT fk_usuario_funcionario
+FOREIGN KEY (fk_funcionario)
+REFERENCES funcionario(id_funcionario)
+ON DELETE SET NULL
+);
