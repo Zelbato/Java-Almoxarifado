@@ -26,6 +26,7 @@ public class ManutencaoService {
     }
 
     public void cadastrar(ManutencaoDTO manutencao) throws SQLException {
+        AuthSession.exigirEscrita();
         validar(manutencao);
         validarRelacionamentos(manutencao);
         manutencaoDAO.cadastrar(manutencao);
@@ -45,6 +46,7 @@ public class ManutencaoService {
     }
 
     public void atualizar(ManutencaoDTO manutencao) throws SQLException {
+        AuthSession.exigirEscrita();
         if (manutencao == null) {
             throw new IllegalArgumentException("Manutenção não informada.");
         }
@@ -61,6 +63,7 @@ public class ManutencaoService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
         buscarPorId(id);
         manutencaoDAO.excluir(id);
     }

@@ -4,6 +4,7 @@ import com.mycompany.almoxarifado.config.DatabaseConnection;
 import com.mycompany.almoxarifado.config.MigrationConfig;
 import com.mycompany.almoxarifado.Dto.SetorDTO;
 import com.mycompany.almoxarifado.Dao.SetorDAO;
+import com.mycompany.almoxarifado.View.LoginView;
 
 import java.sql.Connection;
 
@@ -35,16 +36,6 @@ public class Almoxarifado {
             e.printStackTrace();
         }
          */
-        try {
-            Connection connection
-                    = DatabaseConnection.getConnection();
-
-            System.out.println("Conectado ao MySQL - DBeaver");
-
-            connection.close();
-        } catch (Exception e) {
-            System.out.println("Erro ao Conectar");
-            e.printStackTrace();
-        }
+        java.awt.EventQueue.invokeLater(() -> new LoginView().setVisible(true));
     }
 }

@@ -31,6 +31,7 @@ public class MovimentacaoService {
     }
 
     public void cadastrar(MovimentacaoDTO movimentacao) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validar(movimentacao);
         validarRelacionamentos(movimentacao);
@@ -58,6 +59,7 @@ public class MovimentacaoService {
     }
 
     public void atualizar(MovimentacaoDTO movimentacao) throws SQLException {
+        AuthSession.exigirEscrita();
 
         if (movimentacao == null) {
             throw new IllegalArgumentException(
@@ -84,6 +86,7 @@ public class MovimentacaoService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validarId(id);
 

@@ -22,6 +22,7 @@ public class FuncionarioService {
     }
 
     public void cadastrar(FuncionarioDTO funcionario) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validar(funcionario);
         validarSetor(funcionario.getIdSetor());
@@ -55,6 +56,7 @@ public class FuncionarioService {
     }
 
     public void atualizar(FuncionarioDTO funcionario) throws SQLException {
+        AuthSession.exigirEscrita();
 
         if (funcionario == null) {
             throw new IllegalArgumentException(
@@ -88,6 +90,7 @@ public class FuncionarioService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validarId(id);
 

@@ -31,6 +31,7 @@ public class EquipamentoService {
     }
 
     public void cadastrar(EquipamentoDTO equipamento) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validar(equipamento);
         validarRelacionamentos(equipamento);
@@ -69,6 +70,7 @@ public class EquipamentoService {
     }
 
     public void atualizar(EquipamentoDTO equipamento) throws SQLException {
+        AuthSession.exigirEscrita();
 
         if (equipamento == null) {
             throw new IllegalArgumentException(
@@ -105,6 +107,7 @@ public class EquipamentoService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validarId(id);
 

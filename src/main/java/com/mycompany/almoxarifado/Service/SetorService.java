@@ -23,6 +23,7 @@ public class SetorService {
     }
 
     public void cadastrar(SetorDTO setor) throws SQLException {
+        AuthSession.exigirEscrita();
         validar(setor);
 
         if (setorDAO.existePorNome(setor.getNome())) {
@@ -53,6 +54,7 @@ public class SetorService {
     }
 
     public void atualizar(SetorDTO setor) throws SQLException {
+        AuthSession.exigirEscrita();
 
         if (setor.getIdSetor() == null || setor.getIdSetor() <= 0) {
             throw new IllegalArgumentException("ID do setor inválido");
@@ -77,6 +79,7 @@ public class SetorService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
 
         if (id == null || id <= 0) {
             throw new IllegalArgumentException("ID do setor inválido");

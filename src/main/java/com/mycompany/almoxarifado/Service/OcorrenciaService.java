@@ -32,6 +32,7 @@ public class OcorrenciaService {
     }
 
     public void cadastrar(OcorrenciaDTO ocorrencia) throws SQLException {
+        AuthSession.exigirEscrita();
         validar(ocorrencia);
         validarRelacionamentos(ocorrencia);
         ocorrenciaDAO.cadastrar(ocorrencia);
@@ -51,6 +52,7 @@ public class OcorrenciaService {
     }
 
     public void atualizar(OcorrenciaDTO ocorrencia) throws SQLException {
+        AuthSession.exigirEscrita();
         if (ocorrencia == null) {
             throw new IllegalArgumentException("Ocorrência não informada.");
         }
@@ -67,6 +69,7 @@ public class OcorrenciaService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
         buscarPorId(id);
         ocorrenciaDAO.excluir(id);
     }

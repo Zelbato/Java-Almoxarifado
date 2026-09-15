@@ -1,276 +1,191 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package com.mycompany.almoxarifado.View;
 
-/**
- * Layout de cadastro de funcionários criado como JFrame do NetBeans.
- *
- * @author heito
- */
+import com.mycompany.almoxarifado.Dto.FuncionarioDTO;
+import com.mycompany.almoxarifado.Dto.SetorDTO;
+import com.mycompany.almoxarifado.Service.FuncionarioService;
+import com.mycompany.almoxarifado.Service.AuthSession;
+import com.mycompany.almoxarifado.Service.SetorService;
+import java.sql.SQLException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.swing.JOptionPane;
+import javax.swing.JTextField;
+import javax.swing.JComboBox;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.table.DefaultTableModel;
+
+/** Formulário JFrame do NetBeans para funcionários. */
 public class FuncionarioView extends javax.swing.JFrame {
+    private final FuncionarioService service = new FuncionarioService();
+    private final Map<String, JTextField> campos = new LinkedHashMap<>();
+    private Long idSelecionado;
+    private JComboBox<ComboItem> cmbSetor;
 
-    private static final java.util.logging.Logger logger
-            = java.util.logging.Logger.getLogger(FuncionarioView.class.getName());
+    public FuncionarioView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); configurarSelects(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
 
-    public FuncionarioView() {
-        initComponents();
-        setLocationRelativeTo(null);
+    private void configurarEventos() {
+        btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
+        tblDados.getSelectionModel().addListSelectionListener(this::selecionarLinha);
+    }
+    private void aplicarPermissoes() { boolean permitido = AuthSession.podeEscrever(); btnNovo.setEnabled(permitido); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
+    private FuncionarioDTO lerFormulario() { FuncionarioDTO dto = new FuncionarioDTO(); dto.setIdSetor(ViewInputSupport.id(cmbSetor, "O setor", true)); dto.setNome(ViewInputSupport.texto(campos.get("Nome"))); dto.setCpf(ViewInputSupport.texto(campos.get("CPF"))); dto.setTelefone(ViewInputSupport.texto(campos.get("Telefone"))); dto.setEmail(ViewInputSupport.texto(campos.get("E-mail"))); dto.setDataAdmissao(ViewInputSupport.data(campos.get("Data de admissão"), "A data de admissão", false)); dto.setDataDemissao(ViewInputSupport.data(campos.get("Data de demissão"), "A data de demissão", false)); return dto; }
+    private void cadastrar() { try { service.cadastrar(lerFormulario()); sucesso("Funcionário cadastrada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
+    private void editar() { if (idSelecionado == null) { aviso("Selecione o funcionário para editar."); return; } try { FuncionarioDTO dto = lerFormulario(); dto.setIdFuncionario(idSelecionado); service.atualizar(dto); sucesso("Funcionário atualizada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
+    private void excluir() { if (idSelecionado == null) { aviso("Selecione o funcionário para excluir."); return; } if (JOptionPane.showConfirmDialog(this, "Deseja excluir o funcionário selecionada?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return; try { service.excluir(idSelecionado); sucesso("Funcionário excluída com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
+    private void carregarDados() { try { DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel(); modelo.setRowCount(0); for (FuncionarioDTO dto : service.listarTodos()) modelo.addRow(new Object[]{dto.getIdFuncionario(), dto.getIdSetor(), dto.getNome(), dto.getCpf(), dto.getTelefone(), dto.getEmail(), dto.getDataAdmissao(), dto.getDataDemissao()}); } catch (SQLException ex) { erro(ex); } }
+    private void selecionarLinha(ListSelectionEvent evento) { if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) return; int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow()); Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString()); try { preencher(service.buscarPorId(id)); idSelecionado = id; btnSalvar.setEnabled(false); boolean permitido = AuthSession.podeEscrever(); btnEditar.setEnabled(permitido); btnExcluir.setEnabled(permitido); } catch (SQLException | IllegalArgumentException ex) { erro(ex); } }
+    private void preencher(FuncionarioDTO dto) { ViewInputSupport.selecionar(cmbSetor, dto.getIdSetor()); preencher("Nome", dto.getNome()); preencher("CPF", dto.getCpf()); preencher("Telefone", dto.getTelefone()); preencher("E-mail", dto.getEmail()); preencher("Data de admissão", dto.getDataAdmissao()); preencher("Data de demissão", dto.getDataDemissao()); }
+    private void preencher(String campo, Object valor) { ViewInputSupport.preencher(campos.get(campo), valor); }
+    private void limparFormulario() { idSelecionado = null; campos.values().forEach(c -> c.setText("")); ViewInputSupport.selecionar(cmbSetor, null); tblDados.clearSelection(); boolean permitido = AuthSession.podeEscrever(); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
+    private void sucesso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem); limparFormulario(); carregarDados(); }
+    private void aviso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE); }
+    private void erro(Exception ex) { JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE); }
+
+    private void montarCampos() {
+        campos.put("Setor ID", txtCampo1);
+        campos.put("Nome", txtCampo2);
+        campos.put("CPF", txtCampo3);
+        campos.put("Telefone", txtCampo4);
+        campos.put("E-mail", txtCampo5);
+        campos.put("Data de admissão", txtCampo6);
+        campos.put("Data de demissão", txtCampo7);
     }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-    @SuppressWarnings("unchecked")
+    private void configurarSelects() {
+        cmbSetor = new JComboBox<>();
+        ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo1, cmbSetor);
+        try {
+            for (SetorDTO setor : new SetorService().listarTodos()) {
+                cmbSetor.addItem(new ComboItem(setor.getIdSetor(), setor.getNome()));
+            }
+            cmbSetor.setSelectedIndex(-1);
+        } catch (SQLException ex) {
+            erro(ex);
+        }
+    }
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-
         jPanel1 = new javax.swing.JPanel();
-        lblTituloFormulario = new javax.swing.JLabel();
         pnlFormulario = new javax.swing.JPanel();
-        lblSetor = new javax.swing.JLabel();
-        cmbSetor = new javax.swing.JComboBox<>();
-        lblNome = new javax.swing.JLabel();
-        txtNome = new javax.swing.JTextField();
-        lblCpf = new javax.swing.JLabel();
-        txtCpf = new javax.swing.JTextField();
-        lblTelefone = new javax.swing.JLabel();
-        txtTelefone = new javax.swing.JTextField();
-        lblEmail = new javax.swing.JLabel();
-        txtEmail = new javax.swing.JTextField();
-        lblDataAdmissao = new javax.swing.JLabel();
-        txtDataAdmissao = new javax.swing.JTextField();
-        lblDataDemissao = new javax.swing.JLabel();
-        txtDataDemissao = new javax.swing.JTextField();
+        pnlCampos = new javax.swing.JPanel();
+        lblCampo1 = new javax.swing.JLabel();
+        txtCampo1 = new javax.swing.JTextField();
+        lblCampo2 = new javax.swing.JLabel();
+        txtCampo2 = new javax.swing.JTextField();
+        lblCampo3 = new javax.swing.JLabel();
+        txtCampo3 = new javax.swing.JTextField();
+        lblCampo4 = new javax.swing.JLabel();
+        txtCampo4 = new javax.swing.JTextField();
+        lblCampo5 = new javax.swing.JLabel();
+        txtCampo5 = new javax.swing.JTextField();
+        lblCampo6 = new javax.swing.JLabel();
+        txtCampo6 = new javax.swing.JTextField();
+        lblCampo7 = new javax.swing.JLabel();
+        txtCampo7 = new javax.swing.JTextField();
+        scrollCampos = new javax.swing.JScrollPane();
+        pnlPesquisa = new javax.swing.JPanel();
+        lblTituloFormulario = new javax.swing.JLabel();
+        lblTituloPesquisa = new javax.swing.JLabel();
+        lblTituloLista = new javax.swing.JLabel();
+        lblBuscar = new javax.swing.JLabel();
+        txtBuscar = new javax.swing.JTextField();
         btnNovo = new javax.swing.JButton();
         btnSalvar = new javax.swing.JButton();
         btnEditar = new javax.swing.JButton();
-        lblTituloPesquisa = new javax.swing.JLabel();
-        pnlPesquisa = new javax.swing.JPanel();
-        lblBuscar = new javax.swing.JLabel();
-        txtBuscar = new javax.swing.JTextField();
-        lblTituloLista = new javax.swing.JLabel();
-        scrollFuncionario = new javax.swing.JScrollPane();
-        tblFuncionarios = new javax.swing.JTable();
+        btnExcluir = new javax.swing.JButton();
+        scrollDados = new javax.swing.JScrollPane();
+        tblDados = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Almoxarifado - Funcionários");
-        setBackground(new java.awt.Color(248, 249, 250));
+        getContentPane().setBackground(new java.awt.Color(248, 249, 250));
 
         jPanel1.setBackground(new java.awt.Color(248, 249, 250));
         jPanel1.setPreferredSize(new java.awt.Dimension(719, 600));
-
-        lblTituloFormulario.setFont(new java.awt.Font("Segoe UI", 1, 16));
-        lblTituloFormulario.setForeground(new java.awt.Color(0, 78, 174));
-        lblTituloFormulario.setText("Cadastro / Edição de Funcionário");
-
-        pnlFormulario.setBackground(new java.awt.Color(255, 255, 255));
-        pnlFormulario.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(179, 179, 179)));
-
-        lblSetor.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblSetor.setText("Setor: *");
-        cmbSetor.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Selecione o setor" }));
-
-        lblNome.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblNome.setText("Nome: *");
-        lblCpf.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblCpf.setText("CPF: *");
-        lblTelefone.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblTelefone.setText("Telefone:");
-        lblEmail.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblEmail.setText("E-mail:");
-        lblDataAdmissao.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblDataAdmissao.setText("Data de admissão:");
-        lblDataDemissao.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblDataDemissao.setText("Data de demissão:");
-        txtDataAdmissao.setToolTipText("Formato: yyyy-MM-dd");
-        txtDataDemissao.setToolTipText("Formato: yyyy-MM-dd");
-
-        btnNovo.setBackground(new java.awt.Color(0, 78, 174));
-        btnNovo.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        btnNovo.setForeground(new java.awt.Color(255, 255, 255));
-        btnNovo.setText("+ Novo");
-        btnSalvar.setBackground(new java.awt.Color(53, 158, 77));
-        btnSalvar.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        btnSalvar.setForeground(new java.awt.Color(255, 255, 255));
-        btnSalvar.setText("Salvar");
-        btnEditar.setBackground(new java.awt.Color(228, 146, 10));
-        btnEditar.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        btnEditar.setForeground(new java.awt.Color(255, 255, 255));
-        btnEditar.setText("Editar");
-
-        javax.swing.GroupLayout pnlFormularioLayout = new javax.swing.GroupLayout(pnlFormulario);
-        pnlFormulario.setLayout(pnlFormularioLayout);
-        pnlFormularioLayout.setHorizontalGroup(
-            pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(pnlFormularioLayout.createSequentialGroup()
-                .addGap(14, 14, 14)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(lblSetor).addComponent(lblCpf).addComponent(lblEmail).addComponent(lblDataDemissao))
-                .addGap(12, 12, 12)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(cmbSetor, 0, 170, Short.MAX_VALUE).addComponent(txtCpf).addComponent(txtEmail).addComponent(txtDataDemissao))
-                .addGap(24, 24, 24)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(lblNome).addComponent(lblTelefone).addComponent(lblDataAdmissao))
-                .addGap(12, 12, 12)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(txtNome).addComponent(txtTelefone).addComponent(txtDataAdmissao, javax.swing.GroupLayout.DEFAULT_SIZE, 170, Short.MAX_VALUE))
-                .addContainerGap(18, Short.MAX_VALUE))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, pnlFormularioLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
-                .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
-                .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18))
-        );
-        pnlFormularioLayout.setVerticalGroup(
-            pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(pnlFormularioLayout.createSequentialGroup()
-                .addGap(18, 18, 18)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblSetor).addComponent(cmbSetor, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblNome).addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(16, 16, 16)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblCpf).addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblTelefone).addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(16, 16, 16)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblEmail).addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(lblDataAdmissao).addComponent(txtDataAdmissao, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(16, 16, 16)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblDataDemissao).addComponent(txtDataDemissao, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(16, 16, 16))
-        );
-
-        lblTituloPesquisa.setFont(new java.awt.Font("Segoe UI", 1, 14));
-        lblTituloPesquisa.setForeground(new java.awt.Color(0, 78, 174));
-        lblTituloPesquisa.setText("Pesquisa");
-        pnlPesquisa.setBackground(new java.awt.Color(255, 255, 255));
+        pnlFormulario.setBackground(java.awt.Color.WHITE);
+        pnlFormulario.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
+        pnlPesquisa.setBackground(java.awt.Color.WHITE);
         pnlPesquisa.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(179, 179, 179)));
-        lblBuscar.setFont(new java.awt.Font("Segoe UI", 1, 12));
-        lblBuscar.setText("Buscar:");
+
+        java.awt.Font tituloFont = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12);
+        lblTituloFormulario.setFont(tituloFont); lblTituloFormulario.setForeground(new java.awt.Color(0, 78, 174)); lblTituloFormulario.setText("Cadastro / Edição de Funcionário");
+        lblTituloPesquisa.setFont(tituloFont); lblTituloPesquisa.setForeground(new java.awt.Color(0, 78, 174)); lblTituloPesquisa.setText("Pesquisa");
+        lblTituloLista.setFont(tituloFont); lblTituloLista.setForeground(new java.awt.Color(0, 78, 174)); lblTituloLista.setText("Lista de Funcionários");
+        lblBuscar.setFont(tituloFont); lblBuscar.setText("Buscar:");
         txtBuscar.setText("Digite para buscar...");
+        pnlCampos.setLayout(new java.awt.GridLayout(0, 2, 12, 10));
+        lblCampo1.setFont(tituloFont); lblCampo1.setText("Setor:"); pnlCampos.add(lblCampo1); pnlCampos.add(txtCampo1);
+        lblCampo2.setFont(tituloFont); lblCampo2.setText("Nome:"); pnlCampos.add(lblCampo2); pnlCampos.add(txtCampo2);
+        lblCampo3.setFont(tituloFont); lblCampo3.setText("CPF:"); pnlCampos.add(lblCampo3); pnlCampos.add(txtCampo3);
+        lblCampo4.setFont(tituloFont); lblCampo4.setText("Telefone:"); pnlCampos.add(lblCampo4); pnlCampos.add(txtCampo4);
+        lblCampo5.setFont(tituloFont); lblCampo5.setText("E-mail:"); pnlCampos.add(lblCampo5); pnlCampos.add(txtCampo5);
+        lblCampo6.setFont(tituloFont); lblCampo6.setText("Data de admissão:"); pnlCampos.add(lblCampo6); pnlCampos.add(txtCampo6);
+        lblCampo7.setFont(tituloFont); lblCampo7.setText("Data de demissão:"); pnlCampos.add(lblCampo7); pnlCampos.add(txtCampo7);
+        scrollCampos.setViewportView(pnlCampos);
 
-        javax.swing.GroupLayout pnlPesquisaLayout = new javax.swing.GroupLayout(pnlPesquisa);
-        pnlPesquisa.setLayout(pnlPesquisaLayout);
-        pnlPesquisaLayout.setHorizontalGroup(
-            pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(pnlPesquisaLayout.createSequentialGroup()
-                .addGap(16, 16, 16).addComponent(lblBuscar).addGap(18, 18, 18)
-                .addComponent(txtBuscar).addGap(16, 16, 16))
-        );
-        pnlPesquisaLayout.setVerticalGroup(
-            pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(pnlPesquisaLayout.createSequentialGroup()
-                .addGap(14, 14, 14)
-                .addGroup(pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(lblBuscar).addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(14, 14, 14))
-        );
+        btnNovo.setBackground(new java.awt.Color(0, 78, 174)); btnNovo.setFont(tituloFont); btnNovo.setForeground(java.awt.Color.WHITE); btnNovo.setText("+ Novo"); btnNovo.setPreferredSize(new java.awt.Dimension(86, 38));
+        btnSalvar.setBackground(new java.awt.Color(53, 158, 77)); btnSalvar.setFont(tituloFont); btnSalvar.setForeground(java.awt.Color.WHITE); btnSalvar.setText("Salvar"); btnSalvar.setPreferredSize(new java.awt.Dimension(87, 38));
+        btnEditar.setBackground(new java.awt.Color(228, 146, 10)); btnEditar.setFont(tituloFont); btnEditar.setForeground(java.awt.Color.WHITE); btnEditar.setText("Editar"); btnEditar.setPreferredSize(new java.awt.Dimension(95, 38));
+        btnExcluir.setBackground(new java.awt.Color(214, 62, 50)); btnExcluir.setFont(tituloFont); btnExcluir.setForeground(java.awt.Color.WHITE); btnExcluir.setText("Excluir"); btnExcluir.setPreferredSize(new java.awt.Dimension(96, 38));
 
-        lblTituloLista.setFont(new java.awt.Font("Segoe UI", 1, 14));
-        lblTituloLista.setForeground(new java.awt.Color(0, 78, 174));
-        lblTituloLista.setText("Lista de Funcionários");
-        tblFuncionarios.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {}, new String [] {"ID", "Setor", "Nome", "CPF", "Telefone", "E-mail", "Admissão", "Demissão", "Ações"}
-        ) {
-            boolean[] canEdit = new boolean [] {false, false, false, false, false, false, false, false, false};
-            public boolean isCellEditable(int rowIndex, int columnIndex) { return canEdit[columnIndex]; }
-        });
-        tblFuncionarios.setRowHeight(30);
-        scrollFuncionario.setViewportView(tblFuncionarios);
+        tblDados.setModel(new DefaultTableModel(new Object[][] {}, new String[] {"ID", "Setor", "Nome", "CPF", "Telefone", "E-mail", "Admissão", "Demissão"}) { public boolean isCellEditable(int row, int column) { return false; } });
+        scrollDados.setViewportView(tblDados);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(24, 24, 24)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(pnlFormulario, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(pnlPesquisa, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(scrollFuncionario).addComponent(lblTituloFormulario).addComponent(lblTituloPesquisa).addComponent(lblTituloLista))
-                .addGap(24, 24, 24))
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(24, 24, 24).addComponent(lblTituloFormulario).addGap(8, 8, 8)
-                .addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18).addComponent(lblTituloPesquisa).addGap(8, 8, 8)
-                .addComponent(pnlPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18).addComponent(lblTituloLista).addGap(8, 8, 8)
-                .addComponent(scrollFuncionario, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE).addGap(24, 24, 24))
-        );
+        javax.swing.GroupLayout formularioLayout = new javax.swing.GroupLayout(pnlFormulario);
+        pnlFormulario.setLayout(formularioLayout);
+        formularioLayout.setHorizontalGroup(formularioLayout.createSequentialGroup().addGap(14).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addComponent(scrollCampos, 0, 665, Short.MAX_VALUE).addGroup(javax.swing.GroupLayout.Alignment.TRAILING, formularioLayout.createSequentialGroup().addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(8).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14)));
+        formularioLayout.setVerticalGroup(formularioLayout.createSequentialGroup().addGap(14).addComponent(scrollCampos, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14));
+
+        javax.swing.GroupLayout pesquisaLayout = new javax.swing.GroupLayout(pnlPesquisa);
+        pnlPesquisa.setLayout(pesquisaLayout);
+        pesquisaLayout.setHorizontalGroup(pesquisaLayout.createSequentialGroup().addGap(16).addComponent(lblBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(18).addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 486, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(16));
+        pesquisaLayout.setVerticalGroup(pesquisaLayout.createSequentialGroup().addGap(14).addGroup(pesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(lblBuscar).addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14));
+
+        javax.swing.GroupLayout painelLayout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(painelLayout);
+        painelLayout.setHorizontalGroup(painelLayout.createSequentialGroup().addGap(25).addGroup(painelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addComponent(lblTituloFormulario).addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(lblTituloPesquisa).addComponent(pnlPesquisa, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE).addComponent(lblTituloLista).addComponent(scrollDados, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)).addGap(25));
+        painelLayout.setVerticalGroup(painelLayout.createSequentialGroup().addGap(31).addComponent(lblTituloFormulario).addGap(6).addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(18).addComponent(lblTituloPesquisa).addGap(6).addComponent(pnlPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(20).addComponent(lblTituloLista).addGap(6).addComponent(scrollDados, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(20));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGap(14, 14, 14)
-                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGap(15, 15, 15))
-        );
-        layout.setVerticalGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE));
+        layout.setHorizontalGroup(layout.createSequentialGroup().addGap(14).addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE).addGap(15));
+        layout.setVerticalGroup(layout.createSequentialGroup().addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE));
         pack();
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
-
-    public static void main(String args[]) {
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        java.awt.EventQueue.invokeLater(() -> new FuncionarioView().setVisible(true));
-    }
+    /** Permite executar esta JFrame isoladamente pelo NetBeans. */
+    public static void main(String[] args) { com.mycompany.almoxarifado.Almoxarifado.main(args); }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnEditar;
+    private javax.swing.JButton btnExcluir;
     private javax.swing.JButton btnNovo;
     private javax.swing.JButton btnSalvar;
-    private javax.swing.JComboBox<String> cmbSetor;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JLabel lblCampo1;
+    private javax.swing.JLabel lblCampo2;
+    private javax.swing.JLabel lblCampo3;
+    private javax.swing.JLabel lblCampo4;
+    private javax.swing.JLabel lblCampo5;
+    private javax.swing.JLabel lblCampo6;
+    private javax.swing.JLabel lblCampo7;
     private javax.swing.JLabel lblBuscar;
-    private javax.swing.JLabel lblCpf;
-    private javax.swing.JLabel lblDataAdmissao;
-    private javax.swing.JLabel lblDataDemissao;
-    private javax.swing.JLabel lblEmail;
-    private javax.swing.JLabel lblNome;
-    private javax.swing.JLabel lblSetor;
-    private javax.swing.JLabel lblTelefone;
     private javax.swing.JLabel lblTituloFormulario;
     private javax.swing.JLabel lblTituloLista;
     private javax.swing.JLabel lblTituloPesquisa;
+    private javax.swing.JPanel pnlCampos;
     private javax.swing.JPanel pnlFormulario;
     private javax.swing.JPanel pnlPesquisa;
-    private javax.swing.JScrollPane scrollFuncionario;
-    private javax.swing.JTable tblFuncionarios;
+    private javax.swing.JScrollPane scrollCampos;
+    private javax.swing.JScrollPane scrollDados;
+    private javax.swing.JTable tblDados;
+    private javax.swing.JTextField txtCampo1;
+    private javax.swing.JTextField txtCampo2;
+    private javax.swing.JTextField txtCampo3;
+    private javax.swing.JTextField txtCampo4;
+    private javax.swing.JTextField txtCampo5;
+    private javax.swing.JTextField txtCampo6;
+    private javax.swing.JTextField txtCampo7;
     private javax.swing.JTextField txtBuscar;
-    private javax.swing.JTextField txtCpf;
-    private javax.swing.JTextField txtDataAdmissao;
-    private javax.swing.JTextField txtDataDemissao;
-    private javax.swing.JTextField txtEmail;
-    private javax.swing.JTextField txtNome;
-    private javax.swing.JTextField txtTelefone;
     // End of variables declaration//GEN-END:variables
 }

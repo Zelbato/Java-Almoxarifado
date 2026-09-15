@@ -27,6 +27,7 @@ public class UsuarioService {
     }
 
     public void cadastrar(UsuarioDTO usuario) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validar(usuario, true);
         validarFuncionario(usuario.getIdFuncionario());
@@ -67,6 +68,7 @@ public class UsuarioService {
     }
 
     public void atualizar(UsuarioDTO usuario) throws SQLException {
+        AuthSession.exigirEscrita();
 
         if (usuario == null) {
             throw new IllegalArgumentException(
@@ -117,6 +119,7 @@ public class UsuarioService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
 
         validarId(id);
 

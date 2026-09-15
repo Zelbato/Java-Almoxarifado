@@ -6,6 +6,7 @@ package com.mycompany.almoxarifado.View;
 
 import com.mycompany.almoxarifado.Dto.SetorDTO;
 import com.mycompany.almoxarifado.Service.SetorService;
+import com.mycompany.almoxarifado.Service.AuthSession;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -33,12 +34,19 @@ public class SetorView extends javax.swing.JFrame {
      * Creates new form SetorView
      */
     public SetorView() {
+        AuthSession.exigirAutenticacao();
         initComponents();
         configurarTela();
         configurarTabela();
         estilizarTela();
         limparFormulario();
         carregarSetores();
+        if (!AuthSession.podeEscrever()) {
+            btnNovo.setEnabled(false);
+            btnSalvar.setEnabled(false);
+            btnEditar.setEnabled(false);
+            btnDesativar.setEnabled(false);
+        }
     }
 
     /**
@@ -734,8 +742,8 @@ public class SetorView extends javax.swing.JFrame {
         }
         //</editor-fold>
 
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new SetorView().setVisible(true));
+        // Ao usar "Run File" no NetBeans, inicia o fluxo protegido do sistema.
+        com.mycompany.almoxarifado.Almoxarifado.main(args);
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

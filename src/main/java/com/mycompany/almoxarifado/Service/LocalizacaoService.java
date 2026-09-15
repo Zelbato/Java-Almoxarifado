@@ -23,6 +23,7 @@ public class LocalizacaoService {
     }
 
     public void cadastrar(LocalizacaoDTO localizacao) throws SQLException {
+        AuthSession.exigirEscrita();
         validar(localizacao);
 
         if (localizacaoDAO.existe(
@@ -58,6 +59,7 @@ public class LocalizacaoService {
     }
 
     public void atualizar(LocalizacaoDTO localizacao) throws SQLException {
+        AuthSession.exigirEscrita();
         if (localizacao == null) {
             throw new IllegalArgumentException(
                     "Localização não informada."
@@ -93,6 +95,7 @@ public class LocalizacaoService {
     }
 
     public void excluir(Long id) throws SQLException {
+        AuthSession.exigirEscrita();
         validarId(id);
 
         LocalizacaoDTO localizacao

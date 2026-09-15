@@ -5,6 +5,7 @@
 package com.mycompany.almoxarifado.Dao;
 
 import com.mycompany.almoxarifado.Dto.UsuarioDTO;
+import com.mycompany.almoxarifado.Dto.UsuarioCredenciaisDTO;
 import com.mycompany.almoxarifado.config.DatabaseConnection;
 
 import java.sql.Connection;
@@ -124,6 +125,38 @@ public class UsuarioDAO {
         }
 
         return null;
+    }
+
+    public UsuarioCredenciaisDTO buscarCredenciaisPorEmail(String email) throws SQLException {
+        String sql = """
+                 SELECT u.id_usuario, u.fk_funcionario, u.id_tipo_usuario,
+                        u.nome, u.email, u.cpf, u.data_nascimento, u.ativo,
+                        u.senha, t.nome AS tipo_usuario
+                 FROM usuario u
+                 INNER JOIN tipo_usuario t ON t.id_tipo_usuario = u.id_tipo_usuario
+                 WHERE LOWER(u.email) = LOWER(?)
+                 LIMIT 1
+                 """;
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, email);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) return null;
+
+                UsuarioDTO usuario = new UsuarioDTO();
+                usuario.setIdUsuario(resultSet.getLong("id_usuario"));
+                usuario.setIdFuncionario(resultSet.getObject("fk_funcionario", Long.class));
+                usuario.setIdTipoUsuario(resultSet.getLong("id_tipo_usuario"));
+                usuario.setNome(resultSet.getString("nome"));
+                usuario.setEmail(resultSet.getString("email"));
+                usuario.setCpf(resultSet.getString("cpf"));
+                Date dataNascimento = resultSet.getDate("data_nascimento");
+                if (dataNascimento != null) usuario.setDataNascimento(dataNascimento.toLocalDate());
+                usuario.setAtivo(resultSet.getBoolean("ativo"));
+                return new UsuarioCredenciaisDTO(usuario, resultSet.getString("senha"), resultSet.getString("tipo_usuario"));
+            }
+        }
     }
 
     public void atualizar(UsuarioDTO usuario) throws SQLException {
