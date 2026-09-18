@@ -9,10 +9,13 @@ import javax.swing.JTextField;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import com.toedter.calendar.JDateChooser;
 
 final class ViewInputSupport {
-    private static final DateTimeFormatter DATA = DateTimeFormatter.ISO_LOCAL_DATE;
-    private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm[:ss]");
+    private static final DateTimeFormatter DATA_ISO = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final DateTimeFormatter DATA_BR = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+    private static final DateTimeFormatter DATA_HORA_ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm[:ss]");
+    private static final DateTimeFormatter DATA_HORA_BR = DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm[:ss]");
 
     private ViewInputSupport() { }
 
@@ -108,10 +111,23 @@ final class ViewInputSupport {
             return null;
         }
         try {
-            return LocalDate.parse(valor, DATA);
+            return tentarData(valor);
         } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException(nome + " deve estar no formato yyyy-MM-dd.");
+            throw new IllegalArgumentException(nome + " deve estar no formato dd/MM/yyyy.");
         }
+    }
+
+    static LocalDate data(JDateChooser campo, String nome, boolean obrigatoria) {
+        java.util.Date valor = campo.getDate();
+        if (valor == null) {
+            if (obrigatoria) throw new IllegalArgumentException(nome + " é obrigatória.");
+            return null;
+        }
+        return valor.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    }
+
+    static void selecionar(JDateChooser campo, LocalDate data) {
+        campo.setDate(data == null ? null : java.util.Date.from(data.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant()));
     }
 
     static LocalDateTime dataHora(JTextField campo, String nome, boolean obrigatoria) {
@@ -121,13 +137,35 @@ final class ViewInputSupport {
             return null;
         }
         try {
-            return LocalDateTime.parse(valor, DATA_HORA);
+            return tentarDataHora(valor);
         } catch (DateTimeParseException ex) {
-            throw new IllegalArgumentException(nome + " deve estar no formato yyyy-MM-dd HH:mm ou yyyy-MM-dd HH:mm:ss.");
+            throw new IllegalArgumentException(nome + " deve estar no formato dd/MM/yyyy HH:mm ou dd/MM/yyyy HH:mm:ss.");
         }
     }
 
     static void preencher(JTextField campo, Object valor) {
-        campo.setText(valor == null ? "" : valor.toString());
+        if (valor instanceof LocalDate data) {
+            campo.setText(DATA_BR.format(data));
+        } else if (valor instanceof LocalDateTime dataHora) {
+            campo.setText(DATA_HORA_BR.format(dataHora));
+        } else {
+            campo.setText(valor == null ? "" : valor.toString());
+        }
+    }
+
+    private static LocalDate tentarData(String valor) {
+        try {
+            return LocalDate.parse(valor, DATA_BR);
+        } catch (DateTimeParseException ex) {
+            return LocalDate.parse(valor, DATA_ISO);
+        }
+    }
+
+    private static LocalDateTime tentarDataHora(String valor) {
+        try {
+            return LocalDateTime.parse(valor, DATA_HORA_BR);
+        } catch (DateTimeParseException ex) {
+            return LocalDateTime.parse(valor, DATA_HORA_ISO);
+        }
     }
 }

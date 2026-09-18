@@ -4,18 +4,53 @@ import com.mycompany.almoxarifado.Service.AuthSession;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
-/** Formulário JFrame do menu principal protegido pela sessão. */
+/**
+ * Formulário JFrame do menu principal protegido pela sessão.
+ */
 public class MainView extends javax.swing.JFrame {
-    public MainView() { AuthSession.exigirAutenticacao(); initComponents(); lblUsuario.setText(AuthSession.usuario().getNome() + " - " + AuthSession.tipoUsuario()); configurarEventos(); }
-    /** Permite executar esta JFrame isoladamente pelo NetBeans. */
-    public static void main(String[] args) { com.mycompany.almoxarifado.Almoxarifado.main(args); }
-    private void configurarEventos() {
-        btnCategorias.addActionListener(e -> abrir(new CategoriaView())); btnSetores.addActionListener(e -> abrir(new SetorView())); btnFuncionarios.addActionListener(e -> abrir(new FuncionarioView())); btnLocalizacoes.addActionListener(e -> abrir(new LocalizacaoView()));
-        btnUsuarios.addActionListener(e -> abrir(new UsuarioView())); btnEquipamentos.addActionListener(e -> abrir(new EquipamentoView())); btnMovimentacoes.addActionListener(e -> abrir(new MovimentacaoView())); btnManutencoes.addActionListener(e -> abrir(new ManutencaoView())); btnOcorrencias.addActionListener(e -> abrir(new OcorrenciaView()));
-        btnTiposUsuario.addActionListener(e -> abrir(new TipoUsuarioView())); btnEstados.addActionListener(e -> abrir(new EstadoConservacaoView())); btnSituacoes.addActionListener(e -> abrir(new SituacaoEquipamentoView())); btnStatusMov.addActionListener(e -> abrir(new StatusMovimentacaoView())); btnStatusMan.addActionListener(e -> abrir(new StatusManutencaoView())); btnTiposMan.addActionListener(e -> abrir(new TipoManutencaoView())); btnStatusOco.addActionListener(e -> abrir(new StatusOcorrenciaView())); btnTiposOco.addActionListener(e -> abrir(new TipoOcorrenciaView())); btnSair.addActionListener(e -> sair());
+
+    public MainView() {
+        AuthSession.exigirAutenticacao();
+        initComponents();
+        lblUsuario.setText(AuthSession.usuario().getNome() + " - " + AuthSession.tipoUsuario());
+        configurarEventos();
     }
-    private void abrir(JFrame tela) { tela.setVisible(true); }
-    private void sair() { if (JOptionPane.showConfirmDialog(this, "Deseja sair do sistema?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return; AuthSession.sair(); new LoginView().setVisible(true); dispose(); }
+
+    /**
+     * Permite executar esta JFrame isoladamente pelo NetBeans.
+     */
+    public static void main(String[] args) {
+        com.mycompany.almoxarifado.Almoxarifado.main(args);
+    }
+
+    private void configurarEventos() {
+        btnCategorias.addActionListener(e -> abrir(new CategoriaView()));
+        btnSetores.addActionListener(e -> abrir(new SetorView()));
+        btnFuncionarios.addActionListener(e -> abrir(new FuncionarioView()));
+        btnLocalizacoes.addActionListener(e -> abrir(new LocalizacaoView()));
+        btnUsuarios.addActionListener(e -> abrir(new UsuarioView()));
+        btnEquipamentos.addActionListener(e -> abrir(new EquipamentoView()));
+        btnMovimentacoes.addActionListener(e -> abrir(new MovimentacaoView()));
+        btnManutencoes.addActionListener(e -> abrir(new ManutencaoView()));
+        btnOcorrencias.addActionListener(e -> abrir(new OcorrenciaView()));
+        btnEstados.addActionListener(e -> abrir(new EstadoConservacaoView()));
+        btnTiposMan.addActionListener(e -> abrir(new TipoManutencaoView()));
+        btnTiposOco.addActionListener(e -> abrir(new TipoOcorrenciaView()));
+        btnSair.addActionListener(e -> sair());
+    }
+
+    private void abrir(JFrame tela) {
+        tela.setVisible(true);
+    }
+
+    private void sair() {
+        if (JOptionPane.showConfirmDialog(this, "Deseja sair do sistema?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        AuthSession.sair();
+        new LoginView().setVisible(true);
+        dispose();
+    }
 
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {

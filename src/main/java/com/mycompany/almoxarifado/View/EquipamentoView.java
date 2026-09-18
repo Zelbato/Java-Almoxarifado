@@ -17,6 +17,7 @@ import java.util.Map;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.JComboBox;
+import com.toedter.calendar.JDateChooser;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 
@@ -29,12 +30,14 @@ public class EquipamentoView extends javax.swing.JFrame {
     private final Map<String, JTextField> campos = new LinkedHashMap<>();
     private Long idSelecionado;
     private JComboBox<ComboItem> cmbCategoria, cmbLocalizacao, cmbEstadoConservacao, cmbSituacao;
+    private JDateChooser calDataAquisicao;
 
     public EquipamentoView() {
         AuthSession.exigirAutenticacao();
         initComponents();
         montarCampos();
         configurarSelects();
+        configurarDatas();
         aplicarEstilo();
         configurarEventos();
         aplicarPermissoes();
@@ -82,7 +85,7 @@ public class EquipamentoView extends javax.swing.JFrame {
         dto.setModelo(ViewInputSupport.texto(campos.get("Modelo")));
         dto.setNumeroPatrimonio(ViewInputSupport.texto(campos.get("Patrimônio")));
         dto.setNumeroSerie(ViewInputSupport.texto(campos.get("Número de série")));
-        dto.setDataAquisicao(ViewInputSupport.data(campos.get("Data de aquisição"), "A data de aquisição", false));
+        dto.setDataAquisicao(ViewInputSupport.data(calDataAquisicao, "A data de aquisição", false));
         dto.setAtivo(chkAtivo.isSelected());
         return dto;
     }
@@ -169,7 +172,7 @@ public class EquipamentoView extends javax.swing.JFrame {
         preencher("Modelo", dto.getModelo());
         preencher("Patrimônio", dto.getNumeroPatrimonio());
         preencher("Número de série", dto.getNumeroSerie());
-        preencher("Data de aquisição", dto.getDataAquisicao());
+        ViewInputSupport.selecionar(calDataAquisicao, dto.getDataAquisicao());
         chkAtivo.setSelected(dto.isAtivo());
     }
 
@@ -184,6 +187,7 @@ public class EquipamentoView extends javax.swing.JFrame {
         ViewInputSupport.selecionar(cmbLocalizacao, null);
         ViewInputSupport.selecionar(cmbEstadoConservacao, null);
         ViewInputSupport.selecionar(cmbSituacao, null);
+        ViewInputSupport.selecionar(calDataAquisicao, null);
         chkAtivo.setSelected(true);
         tblDados.clearSelection();
         boolean permitido = AuthSession.podeEscrever();
@@ -235,6 +239,12 @@ public class EquipamentoView extends javax.swing.JFrame {
             for (SituacaoEquipamentoDTO item : new SituacaoEquipamentoService().listarTodos()) cmbSituacao.addItem(new ComboItem(item.getIdSituacaoEquipamento(), item.getNome()));
             cmbCategoria.setSelectedIndex(-1); cmbLocalizacao.setSelectedIndex(-1); cmbEstadoConservacao.setSelectedIndex(-1); cmbSituacao.setSelectedIndex(-1);
         } catch (SQLException ex) { erro(ex); }
+    }
+
+    private void configurarDatas() {
+        calDataAquisicao = new JDateChooser();
+        calDataAquisicao.setDateFormatString("dd/MM/yyyy");
+        ViewInputSupport.substituirNoPainel(pnlCampos, campos.get("Data de aquisição"), calDataAquisicao);
     }
 
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents

@@ -11,6 +11,7 @@ import java.util.Map;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.JComboBox;
+import com.toedter.calendar.JDateChooser;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 
@@ -20,23 +21,24 @@ public class FuncionarioView extends javax.swing.JFrame {
     private final Map<String, JTextField> campos = new LinkedHashMap<>();
     private Long idSelecionado;
     private JComboBox<ComboItem> cmbSetor;
+    private JDateChooser calDataAdmissao, calDataDemissao;
 
-    public FuncionarioView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); configurarSelects(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
+    public FuncionarioView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); configurarSelects(); configurarDatas(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
 
     private void configurarEventos() {
         btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
         tblDados.getSelectionModel().addListSelectionListener(this::selecionarLinha);
     }
     private void aplicarPermissoes() { boolean permitido = AuthSession.podeEscrever(); btnNovo.setEnabled(permitido); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
-    private FuncionarioDTO lerFormulario() { FuncionarioDTO dto = new FuncionarioDTO(); dto.setIdSetor(ViewInputSupport.id(cmbSetor, "O setor", true)); dto.setNome(ViewInputSupport.texto(campos.get("Nome"))); dto.setCpf(ViewInputSupport.texto(campos.get("CPF"))); dto.setTelefone(ViewInputSupport.texto(campos.get("Telefone"))); dto.setEmail(ViewInputSupport.texto(campos.get("E-mail"))); dto.setDataAdmissao(ViewInputSupport.data(campos.get("Data de admissão"), "A data de admissão", false)); dto.setDataDemissao(ViewInputSupport.data(campos.get("Data de demissão"), "A data de demissão", false)); return dto; }
+    private FuncionarioDTO lerFormulario() { FuncionarioDTO dto = new FuncionarioDTO(); dto.setIdSetor(ViewInputSupport.id(cmbSetor, "O setor", true)); dto.setNome(ViewInputSupport.texto(campos.get("Nome"))); dto.setCpf(ViewInputSupport.texto(campos.get("CPF"))); dto.setTelefone(ViewInputSupport.texto(campos.get("Telefone"))); dto.setEmail(ViewInputSupport.texto(campos.get("E-mail"))); dto.setDataAdmissao(ViewInputSupport.data(calDataAdmissao, "A data de admissão", false)); dto.setDataDemissao(ViewInputSupport.data(calDataDemissao, "A data de demissão", false)); return dto; }
     private void cadastrar() { try { service.cadastrar(lerFormulario()); sucesso("Funcionário cadastrada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
     private void editar() { if (idSelecionado == null) { aviso("Selecione o funcionário para editar."); return; } try { FuncionarioDTO dto = lerFormulario(); dto.setIdFuncionario(idSelecionado); service.atualizar(dto); sucesso("Funcionário atualizada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
     private void excluir() { if (idSelecionado == null) { aviso("Selecione o funcionário para excluir."); return; } if (JOptionPane.showConfirmDialog(this, "Deseja excluir o funcionário selecionada?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return; try { service.excluir(idSelecionado); sucesso("Funcionário excluída com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
     private void carregarDados() { try { DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel(); modelo.setRowCount(0); for (FuncionarioDTO dto : service.listarTodos()) modelo.addRow(new Object[]{dto.getIdFuncionario(), dto.getIdSetor(), dto.getNome(), dto.getCpf(), dto.getTelefone(), dto.getEmail(), dto.getDataAdmissao(), dto.getDataDemissao()}); } catch (SQLException ex) { erro(ex); } }
     private void selecionarLinha(ListSelectionEvent evento) { if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) return; int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow()); Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString()); try { preencher(service.buscarPorId(id)); idSelecionado = id; btnSalvar.setEnabled(false); boolean permitido = AuthSession.podeEscrever(); btnEditar.setEnabled(permitido); btnExcluir.setEnabled(permitido); } catch (SQLException | IllegalArgumentException ex) { erro(ex); } }
-    private void preencher(FuncionarioDTO dto) { ViewInputSupport.selecionar(cmbSetor, dto.getIdSetor()); preencher("Nome", dto.getNome()); preencher("CPF", dto.getCpf()); preencher("Telefone", dto.getTelefone()); preencher("E-mail", dto.getEmail()); preencher("Data de admissão", dto.getDataAdmissao()); preencher("Data de demissão", dto.getDataDemissao()); }
+    private void preencher(FuncionarioDTO dto) { ViewInputSupport.selecionar(cmbSetor, dto.getIdSetor()); preencher("Nome", dto.getNome()); preencher("CPF", dto.getCpf()); preencher("Telefone", dto.getTelefone()); preencher("E-mail", dto.getEmail()); ViewInputSupport.selecionar(calDataAdmissao, dto.getDataAdmissao()); ViewInputSupport.selecionar(calDataDemissao, dto.getDataDemissao()); }
     private void preencher(String campo, Object valor) { ViewInputSupport.preencher(campos.get(campo), valor); }
-    private void limparFormulario() { idSelecionado = null; campos.values().forEach(c -> c.setText("")); ViewInputSupport.selecionar(cmbSetor, null); tblDados.clearSelection(); boolean permitido = AuthSession.podeEscrever(); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
+    private void limparFormulario() { idSelecionado = null; campos.values().forEach(c -> c.setText("")); ViewInputSupport.selecionar(cmbSetor, null); ViewInputSupport.selecionar(calDataAdmissao, null); ViewInputSupport.selecionar(calDataDemissao, null); tblDados.clearSelection(); boolean permitido = AuthSession.podeEscrever(); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
     private void sucesso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem); limparFormulario(); carregarDados(); }
     private void aviso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE); }
     private void erro(Exception ex) { JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE); }
@@ -62,6 +64,15 @@ public class FuncionarioView extends javax.swing.JFrame {
         } catch (SQLException ex) {
             erro(ex);
         }
+    }
+
+    private void configurarDatas() {
+        calDataAdmissao = new JDateChooser();
+        calDataDemissao = new JDateChooser();
+        calDataAdmissao.setDateFormatString("dd/MM/yyyy");
+        calDataDemissao.setDateFormatString("dd/MM/yyyy");
+        ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo6, calDataAdmissao);
+        ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo7, calDataDemissao);
     }
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {

@@ -16,33 +16,169 @@ import javax.swing.JComboBox;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 
-/** Formulário JFrame do NetBeans para usuários. */
+/**
+ * Formulário JFrame do NetBeans para usuários.
+ */
 public class UsuarioView extends javax.swing.JFrame {
+
     private final UsuarioService service = new UsuarioService();
     private final Map<String, JTextField> campos = new LinkedHashMap<>();
     private Long idSelecionado;
     private JComboBox<ComboItem> cmbTipoUsuario;
     private JComboBox<ComboItem> cmbFuncionario;
 
-    public UsuarioView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); configurarSelects(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
+    public UsuarioView() {
+        AuthSession.exigirAutenticacao();
+        initComponents();
+        montarCampos();
+        configurarSelects();
+        ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir);
+        configurarEventos();
+        aplicarPermissoes();
+        limparFormulario();
+        carregarDados();
+    }
 
     private void configurarEventos() {
-        btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
+        btnNovo.addActionListener(e -> limparFormulario());
+        btnSalvar.addActionListener(e -> cadastrar());
+        btnEditar.addActionListener(e -> editar());
+        btnExcluir.addActionListener(e -> excluir());
         tblDados.getSelectionModel().addListSelectionListener(this::selecionarLinha);
     }
-    private void aplicarPermissoes() { boolean permitido = AuthSession.podeEscrever(); btnNovo.setEnabled(permitido); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
-    private UsuarioDTO lerFormulario() { UsuarioDTO dto = new UsuarioDTO(); dto.setIdTipoUsuario(ViewInputSupport.id(cmbTipoUsuario, "O tipo de usuário", true)); dto.setIdFuncionario(ViewInputSupport.id(cmbFuncionario, "O funcionário", false)); dto.setNome(ViewInputSupport.texto(campos.get("Nome"))); dto.setCpf(ViewInputSupport.texto(campos.get("CPF"))); dto.setEmail(ViewInputSupport.texto(campos.get("E-mail"))); dto.setSenha(ViewInputSupport.texto(campos.get("Senha"))); dto.setDataNascimento(ViewInputSupport.data(campos.get("Data de nascimento"), "A data de nascimento", false)); dto.setAtivo(chkAtivo.isSelected()); return dto; }
-    private void cadastrar() { try { service.cadastrar(lerFormulario()); sucesso("Usuário cadastrada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
-    private void editar() { if (idSelecionado == null) { aviso("Selecione o usuário para editar."); return; } try { UsuarioDTO dto = lerFormulario(); dto.setIdUsuario(idSelecionado); service.atualizar(dto); sucesso("Usuário atualizada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
-    private void excluir() { if (idSelecionado == null) { aviso("Selecione o usuário para excluir."); return; } if (JOptionPane.showConfirmDialog(this, "Deseja excluir o usuário selecionada?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return; try { service.excluir(idSelecionado); sucesso("Usuário excluída com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
-    private void carregarDados() { try { DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel(); modelo.setRowCount(0); for (UsuarioDTO dto : service.listarTodos()) modelo.addRow(new Object[]{dto.getIdUsuario(), dto.getIdTipoUsuario(), dto.getIdFuncionario() == null ? "-" : dto.getIdFuncionario(), dto.getNome(), dto.getEmail(), dto.getCpf(), dto.isAtivo() ? "Ativo" : "Inativo"}); } catch (SQLException ex) { erro(ex); } }
-    private void selecionarLinha(ListSelectionEvent evento) { if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) return; int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow()); Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString()); try { preencher(service.buscarPorId(id)); idSelecionado = id; btnSalvar.setEnabled(false); boolean permitido = AuthSession.podeEscrever(); btnEditar.setEnabled(permitido); btnExcluir.setEnabled(permitido); } catch (SQLException | IllegalArgumentException ex) { erro(ex); } }
-    private void preencher(UsuarioDTO dto) { ViewInputSupport.selecionar(cmbTipoUsuario, dto.getIdTipoUsuario()); ViewInputSupport.selecionar(cmbFuncionario, dto.getIdFuncionario()); preencher("Nome", dto.getNome()); preencher("CPF", dto.getCpf()); preencher("E-mail", dto.getEmail()); preencher("Senha", ""); preencher("Data de nascimento", dto.getDataNascimento()); chkAtivo.setSelected(dto.isAtivo()); }
-    private void preencher(String campo, Object valor) { ViewInputSupport.preencher(campos.get(campo), valor); }
-    private void limparFormulario() { idSelecionado = null; campos.values().forEach(c -> c.setText("")); ViewInputSupport.selecionar(cmbTipoUsuario, null); ViewInputSupport.selecionar(cmbFuncionario, null); chkAtivo.setSelected(true); tblDados.clearSelection(); boolean permitido = AuthSession.podeEscrever(); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
-    private void sucesso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem); limparFormulario(); carregarDados(); }
-    private void aviso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE); }
-    private void erro(Exception ex) { JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE); }
+
+    private void aplicarPermissoes() {
+        boolean permitido = AuthSession.podeEscrever();
+        btnNovo.setEnabled(permitido);
+        btnSalvar.setEnabled(permitido);
+        btnEditar.setEnabled(false);
+        btnExcluir.setEnabled(false);
+    }
+
+    private UsuarioDTO lerFormulario() {
+        UsuarioDTO dto = new UsuarioDTO();
+        dto.setIdTipoUsuario(ViewInputSupport.id(cmbTipoUsuario, "O tipo de usuário", true));
+        dto.setIdFuncionario(ViewInputSupport.id(cmbFuncionario, "O funcionário", false));
+        dto.setNome(ViewInputSupport.texto(campos.get("Nome")));
+        dto.setCpf(ViewInputSupport.texto(campos.get("CPF")));
+        dto.setEmail(ViewInputSupport.texto(campos.get("E-mail")));
+        dto.setSenha(ViewInputSupport.texto(campos.get("Senha")));
+        dto.setDataNascimento(ViewInputSupport.data(campos.get("Data de nascimento"), "A data de nascimento", false));
+        dto.setAtivo(chkAtivo.isSelected());
+        return dto;
+    }
+
+    private void cadastrar() {
+        try {
+            service.cadastrar(lerFormulario());
+            sucesso("Usuário cadastrada com sucesso.");
+        } catch (IllegalArgumentException | SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void editar() {
+        if (idSelecionado == null) {
+            aviso("Selecione o usuário para editar.");
+            return;
+        }
+        try {
+            UsuarioDTO dto = lerFormulario();
+            dto.setIdUsuario(idSelecionado);
+            service.atualizar(dto);
+            sucesso("Usuário atualizada com sucesso.");
+        } catch (IllegalArgumentException | SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void excluir() {
+        if (idSelecionado == null) {
+            aviso("Selecione o usuário para excluir.");
+            return;
+        }
+        if (JOptionPane.showConfirmDialog(this, "Deseja excluir o usuário selecionada?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            service.excluir(idSelecionado);
+            sucesso("Usuário excluída com sucesso.");
+        } catch (IllegalArgumentException | SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void carregarDados() {
+        try {
+            DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel();
+            modelo.setRowCount(0);
+            for (UsuarioDTO dto : service.listarTodos()) {
+                modelo.addRow(new Object[]{dto.getIdUsuario(), dto.getIdTipoUsuario(), dto.getIdFuncionario() == null ? "-" : dto.getIdFuncionario(), dto.getNome(), dto.getEmail(), dto.getCpf(), dto.isAtivo() ? "Ativo" : "Inativo"});
+            }
+        } catch (SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void selecionarLinha(ListSelectionEvent evento) {
+        if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) {
+            return;
+        }
+        int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow());
+        Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString());
+        try {
+            preencher(service.buscarPorId(id));
+            idSelecionado = id;
+            btnSalvar.setEnabled(false);
+            boolean permitido = AuthSession.podeEscrever();
+            btnEditar.setEnabled(permitido);
+            btnExcluir.setEnabled(permitido);
+        } catch (SQLException | IllegalArgumentException ex) {
+            erro(ex);
+        }
+    }
+
+    private void preencher(UsuarioDTO dto) {
+        ViewInputSupport.selecionar(cmbTipoUsuario, dto.getIdTipoUsuario());
+        ViewInputSupport.selecionar(cmbFuncionario, dto.getIdFuncionario());
+        preencher("Nome", dto.getNome());
+        preencher("CPF", dto.getCpf());
+        preencher("E-mail", dto.getEmail());
+        preencher("Senha", "");
+        preencher("Data de nascimento", dto.getDataNascimento());
+        chkAtivo.setSelected(dto.isAtivo());
+    }
+
+    private void preencher(String campo, Object valor) {
+        ViewInputSupport.preencher(campos.get(campo), valor);
+    }
+
+    private void limparFormulario() {
+        idSelecionado = null;
+        campos.values().forEach(c -> c.setText(""));
+        ViewInputSupport.selecionar(cmbTipoUsuario, null);
+        ViewInputSupport.selecionar(cmbFuncionario, null);
+        chkAtivo.setSelected(true);
+        tblDados.clearSelection();
+        boolean permitido = AuthSession.podeEscrever();
+        btnSalvar.setEnabled(permitido);
+        btnEditar.setEnabled(false);
+        btnExcluir.setEnabled(false);
+    }
+
+    private void sucesso(String mensagem) {
+        JOptionPane.showMessageDialog(this, mensagem);
+        limparFormulario();
+        carregarDados();
+    }
+
+    private void aviso(String mensagem) {
+        JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void erro(Exception ex) {
+        JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+    }
 
     private void montarCampos() {
         campos.put("Tipo de usuário ID", txtCampo1);
@@ -60,11 +196,17 @@ public class UsuarioView extends javax.swing.JFrame {
         ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo1, cmbTipoUsuario);
         ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo2, cmbFuncionario);
         try {
-            for (TipoUsuarioDTO tipo : new TipoUsuarioService().listarTodos()) cmbTipoUsuario.addItem(new ComboItem(tipo.getIdTipoUsuario(), tipo.getNome()));
-            for (FuncionarioDTO funcionario : new FuncionarioService().listarTodos()) cmbFuncionario.addItem(new ComboItem(funcionario.getIdFuncionario(), funcionario.getNome()));
+            for (TipoUsuarioDTO tipo : new TipoUsuarioService().listarTodos()) {
+                cmbTipoUsuario.addItem(new ComboItem(tipo.getIdTipoUsuario(), tipo.getNome()));
+            }
+            for (FuncionarioDTO funcionario : new FuncionarioService().listarTodos()) {
+                cmbFuncionario.addItem(new ComboItem(funcionario.getIdFuncionario(), funcionario.getNome()));
+            }
             cmbTipoUsuario.setSelectedIndex(-1);
             cmbFuncionario.setSelectedIndex(-1);
-        } catch (SQLException ex) { erro(ex); }
+        } catch (SQLException ex) {
+            erro(ex);
+        }
     }
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -157,8 +299,12 @@ public class UsuarioView extends javax.swing.JFrame {
         pack();
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
-    /** Permite executar esta JFrame isoladamente pelo NetBeans. */
-    public static void main(String[] args) { com.mycompany.almoxarifado.Almoxarifado.main(args); }
+    /**
+     * Permite executar esta JFrame isoladamente pelo NetBeans.
+     */
+    public static void main(String[] args) {
+        com.mycompany.almoxarifado.Almoxarifado.main(args);
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnEditar;
