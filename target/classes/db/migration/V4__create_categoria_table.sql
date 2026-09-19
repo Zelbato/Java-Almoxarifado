@@ -1,0 +1,16 @@
+
+/**
+ * Author:  heito
+ * Created: 15 de ago. de 2026
+ */
+
+CREATE TABLE categoria (
+    id_categoria BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    descricao VARCHAR(255),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+);

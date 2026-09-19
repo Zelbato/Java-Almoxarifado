@@ -44,7 +44,6 @@ public class MovimentacaoService {
     }
 
     public MovimentacaoDTO buscarPorId(Long id) throws SQLException {
-
         validarId(id);
 
         MovimentacaoDTO movimentacao = movimentacaoDAO.buscarPorId(id);
@@ -103,7 +102,6 @@ public class MovimentacaoService {
     }
 
     private void validar(MovimentacaoDTO movimentacao) {
-
         if (movimentacao == null) {
             throw new IllegalArgumentException(
                     "Movimentação não informada."
@@ -112,7 +110,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getIdEquipamento() == null
                 || movimentacao.getIdEquipamento() <= 0) {
-
             throw new IllegalArgumentException(
                     "O equipamento é obrigatório."
             );
@@ -120,7 +117,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getIdFuncionario() == null
                 || movimentacao.getIdFuncionario() <= 0) {
-
             throw new IllegalArgumentException(
                     "O funcionário é obrigatório."
             );
@@ -128,7 +124,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getIdUsuarioRetirada() == null
                 || movimentacao.getIdUsuarioRetirada() <= 0) {
-
             throw new IllegalArgumentException(
                     "O usuário responsável pela retirada é obrigatório."
             );
@@ -136,7 +131,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getIdUsuarioDevolucao() != null
                 && movimentacao.getIdUsuarioDevolucao() <= 0) {
-
             throw new IllegalArgumentException(
                     "ID do usuário responsável pela devolução inválido."
             );
@@ -144,7 +138,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getIdStatusMovimentacao() == null
                 || movimentacao.getIdStatusMovimentacao() <= 0) {
-
             throw new IllegalArgumentException(
                     "O status da movimentação é obrigatório."
             );
@@ -164,7 +157,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getDataPrevistaDevolucao()
                 .isBefore(movimentacao.getDataRetirada())) {
-
             throw new IllegalArgumentException(
                     "A data prevista de devolução não pode ser anterior à data de retirada."
             );
@@ -173,31 +165,13 @@ public class MovimentacaoService {
         if (movimentacao.getDataDevolucao() != null
                 && movimentacao.getDataDevolucao()
                         .isBefore(movimentacao.getDataRetirada())) {
-
             throw new IllegalArgumentException(
                     "A data de devolução não pode ser anterior à data de retirada."
             );
         }
 
-        if (movimentacao.getDataDevolucao() != null
-                && movimentacao.getIdUsuarioDevolucao() == null) {
-
-            throw new IllegalArgumentException(
-                    "Informe o usuário responsável pela devolução."
-            );
-        }
-
-        if (movimentacao.getIdUsuarioDevolucao() != null
-                && movimentacao.getDataDevolucao() == null) {
-
-            throw new IllegalArgumentException(
-                    "Informe a data de devolução."
-            );
-        }
-
         if (movimentacao.getFinalidade() != null
                 && movimentacao.getFinalidade().length() > 255) {
-
             throw new IllegalArgumentException(
                     "A finalidade deve possuir no máximo 255 caracteres."
             );
@@ -205,7 +179,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getObservacaoRetirada() != null
                 && movimentacao.getObservacaoRetirada().length() > 500) {
-
             throw new IllegalArgumentException(
                     "A observação da retirada deve possuir no máximo 500 caracteres."
             );
@@ -213,7 +186,6 @@ public class MovimentacaoService {
 
         if (movimentacao.getObservacaoDevolucao() != null
                 && movimentacao.getObservacaoDevolucao().length() > 500) {
-
             throw new IllegalArgumentException(
                     "A observação da devolução deve possuir no máximo 500 caracteres."
             );
@@ -221,7 +193,6 @@ public class MovimentacaoService {
     }
 
     private void validarId(Long id) {
-
         if (id == null || id <= 0) {
             throw new IllegalArgumentException(
                     "ID da movimentação inválido."
@@ -232,11 +203,9 @@ public class MovimentacaoService {
     private void validarRelacionamentos(
             MovimentacaoDTO movimentacao
     ) throws SQLException {
-
         if (equipamentoDAO.buscarPorId(
                 movimentacao.getIdEquipamento()
         ) == null) {
-
             throw new IllegalArgumentException(
                     "Equipamento não encontrado."
             );
@@ -245,7 +214,6 @@ public class MovimentacaoService {
         if (funcionarioDAO.buscarPorId(
                 movimentacao.getIdFuncionario()
         ) == null) {
-
             throw new IllegalArgumentException(
                     "Funcionário não encontrado."
             );
@@ -254,19 +222,8 @@ public class MovimentacaoService {
         if (usuarioDAO.buscarPorId(
                 movimentacao.getIdUsuarioRetirada()
         ) == null) {
-
             throw new IllegalArgumentException(
                     "Usuário responsável pela retirada não encontrado."
-            );
-        }
-
-        if (movimentacao.getIdUsuarioDevolucao() != null
-                && usuarioDAO.buscarPorId(
-                        movimentacao.getIdUsuarioDevolucao()
-                ) == null) {
-
-            throw new IllegalArgumentException(
-                    "Usuário responsável pela devolução não encontrado."
             );
         }
 
@@ -275,32 +232,49 @@ public class MovimentacaoService {
         );
 
         if (status == null) {
-
             throw new IllegalArgumentException(
                     "Status da movimentação não encontrado."
             );
         }
 
         validarDevolucaoPorStatus(movimentacao, status.getNome());
+
+        if (movimentacao.getIdUsuarioDevolucao() != null
+                && usuarioDAO.buscarPorId(
+                        movimentacao.getIdUsuarioDevolucao()
+                ) == null) {
+            throw new IllegalArgumentException(
+                    "Usuário responsável pela devolução não encontrado."
+            );
+        }
     }
 
     private void validarDevolucaoPorStatus(
             MovimentacaoDTO movimentacao,
             String nomeStatus
     ) {
-        boolean devolvida = "DEVOLVIDA".equals(nomeStatus);
-        boolean possuiDadosDevolucao = movimentacao.getDataDevolucao() != null
-                && movimentacao.getIdUsuarioDevolucao() != null;
+        boolean devolvida = "DEVOLVIDA".equalsIgnoreCase(
+                nomeStatus == null ? "" : nomeStatus.trim()
+        );
 
-        if (devolvida && !possuiDadosDevolucao) {
-            throw new IllegalArgumentException(
-                    "Uma movimentação devolvida exige data e usuário da devolução."
-            );
+        boolean possuiUsuarioDevolucao =
+                movimentacao.getIdUsuarioDevolucao() != null;
+
+        boolean possuiDataDevolucao =
+                movimentacao.getDataDevolucao() != null;
+
+        if (devolvida) {
+            if (!possuiUsuarioDevolucao || !possuiDataDevolucao) {
+                throw new IllegalArgumentException(
+                        "Uma movimentação devolvida exige data e usuário da devolução."
+                );
+            }
+            return;
         }
 
-        if (!devolvida && possuiDadosDevolucao) {
+        if (possuiUsuarioDevolucao || possuiDataDevolucao) {
             throw new IllegalArgumentException(
-                    "Dados de devolução só podem ser informados para movimentações devolvidas."
+                    "Usuário e data de devolução só podem ser informados quando o status for DEVOLVIDA."
             );
         }
     }

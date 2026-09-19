@@ -3,12 +3,26 @@ package com.mycompany.almoxarifado.View;
 import com.mycompany.almoxarifado.Dto.OcorrenciaDTO;
 import com.mycompany.almoxarifado.Service.OcorrenciaService;
 import com.mycompany.almoxarifado.Service.AuthSession;
+import com.toedter.calendar.JDateChooser;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.JComboBox;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerDateModel;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 
@@ -18,39 +32,112 @@ public class OcorrenciaView extends javax.swing.JFrame {
     private final Map<String, JTextField> campos = new LinkedHashMap<>();
     private Long idSelecionado;
     private JComboBox<ComboItem> cmbEquipamento, cmbMovimentacao, cmbFuncionario, cmbUsuarioRegistro, cmbTipoOcorrencia, cmbStatus;
+    private JDateChooser calDataOcorrencia, calDataResolucao;
+    private JSpinner spnHoraOcorrencia, spnHoraResolucao;
+    private JPanel pnlDataOcorrencia, pnlDataResolucao;
 
-    public OcorrenciaView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); configurarSelects(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
+    public OcorrenciaView() {
+        AuthSession.exigirAutenticacao();
+        initComponents();
+        montarCampos();
+        configurarSelects();
+        configurarDatas();
+        ajustarLayoutFormulario();
+        ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir);
+        configurarEventos();
+        aplicarPermissoes();
+        limparFormulario();
+        carregarDados();
+    }
 
     private void configurarEventos() {
-        btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
+        btnNovo.addActionListener(e -> limparFormulario());
+        btnSalvar.addActionListener(e -> cadastrar());
+        btnEditar.addActionListener(e -> editar());
+        btnExcluir.addActionListener(e -> excluir());
+        cmbStatus.addActionListener(e -> atualizarCamposResolucao());
         tblDados.getSelectionModel().addListSelectionListener(this::selecionarLinha);
     }
     private void aplicarPermissoes() { boolean permitido = AuthSession.podeEscrever(); btnNovo.setEnabled(permitido); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
-    private OcorrenciaDTO lerFormulario() { OcorrenciaDTO dto = new OcorrenciaDTO(); dto.setIdEquipamento(ViewInputSupport.id(cmbEquipamento, "O equipamento", true)); dto.setIdMovimentacao(ViewInputSupport.id(cmbMovimentacao, "A movimentação", false)); dto.setIdFuncionario(ViewInputSupport.id(cmbFuncionario, "O funcionário", false)); dto.setIdUsuarioRegistro(ViewInputSupport.id(cmbUsuarioRegistro, "O usuário do registro", true)); dto.setIdTipoOcorrencia(ViewInputSupport.id(cmbTipoOcorrencia, "O tipo de ocorrência", true)); dto.setIdStatusOcorrencia(ViewInputSupport.id(cmbStatus, "O status", true)); dto.setTitulo(ViewInputSupport.texto(campos.get("Título"))); dto.setDescricao(ViewInputSupport.texto(campos.get("Descrição"))); dto.setDataOcorrencia(ViewInputSupport.dataHora(campos.get("Data da ocorrência"), "A data da ocorrência", true)); dto.setSolucao(ViewInputSupport.texto(campos.get("Solução"))); dto.setDataResolucao(ViewInputSupport.dataHora(campos.get("Data de resolução"), "A data de resolução", false)); return dto; }
+    private OcorrenciaDTO lerFormulario() {
+        OcorrenciaDTO dto = new OcorrenciaDTO();
+        dto.setIdEquipamento(ViewInputSupport.id(cmbEquipamento, "O equipamento", true));
+        dto.setIdMovimentacao(ViewInputSupport.id(cmbMovimentacao, "A movimentação", false));
+        dto.setIdFuncionario(ViewInputSupport.id(cmbFuncionario, "O funcionário", false));
+        dto.setIdUsuarioRegistro(ViewInputSupport.id(cmbUsuarioRegistro, "O usuário do registro", true));
+        dto.setIdTipoOcorrencia(ViewInputSupport.id(cmbTipoOcorrencia, "O tipo de ocorrência", true));
+        dto.setIdStatusOcorrencia(ViewInputSupport.id(cmbStatus, "O status", true));
+        dto.setTitulo(ViewInputSupport.texto(campos.get("Título")));
+        dto.setDescricao(ViewInputSupport.texto(campos.get("Descrição")));
+        dto.setDataOcorrencia(lerDataHora(calDataOcorrencia, spnHoraOcorrencia, "A data da ocorrência", true));
+        if (statusResolvidaSelecionado()) {
+            dto.setSolucao(ViewInputSupport.texto(campos.get("Solução")));
+            dto.setDataResolucao(
+                    lerDataHora(
+                            calDataResolucao,
+                            spnHoraResolucao,
+                            "A data de resolução",
+                            false
+                    )
+            );
+        } else {
+            dto.setSolucao(null);
+            dto.setDataResolucao(null);
+        }
+        return dto;
+    }
+
     private void cadastrar() { try { service.cadastrar(lerFormulario()); sucesso("Ocorrência cadastrada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
     private void editar() { if (idSelecionado == null) { aviso("Selecione a ocorrência para editar."); return; } try { OcorrenciaDTO dto = lerFormulario(); dto.setIdOcorrencia(idSelecionado); service.atualizar(dto); sucesso("Ocorrência atualizada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
     private void excluir() { if (idSelecionado == null) { aviso("Selecione a ocorrência para excluir."); return; } if (JOptionPane.showConfirmDialog(this, "Deseja excluir a ocorrência selecionada?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return; try { service.excluir(idSelecionado); sucesso("Ocorrência excluída com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
     private void carregarDados() { try { DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel(); modelo.setRowCount(0); for (OcorrenciaDTO dto : service.listarTodos()) modelo.addRow(new Object[]{dto.getIdOcorrencia(), dto.getTitulo(), dto.getIdEquipamento(), dto.getIdTipoOcorrencia(), dto.getIdStatusOcorrencia(), dto.getDataOcorrencia(), dto.getDataResolucao()}); } catch (SQLException ex) { erro(ex); } }
     private void selecionarLinha(ListSelectionEvent evento) { if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) return; int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow()); Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString()); try { preencher(service.buscarPorId(id)); idSelecionado = id; btnSalvar.setEnabled(false); boolean permitido = AuthSession.podeEscrever(); btnEditar.setEnabled(permitido); btnExcluir.setEnabled(permitido); } catch (SQLException | IllegalArgumentException ex) { erro(ex); } }
-    private void preencher(OcorrenciaDTO dto) { ViewInputSupport.selecionar(cmbEquipamento, dto.getIdEquipamento()); ViewInputSupport.selecionar(cmbMovimentacao, dto.getIdMovimentacao()); ViewInputSupport.selecionar(cmbFuncionario, dto.getIdFuncionario()); ViewInputSupport.selecionar(cmbUsuarioRegistro, dto.getIdUsuarioRegistro()); ViewInputSupport.selecionar(cmbTipoOcorrencia, dto.getIdTipoOcorrencia()); ViewInputSupport.selecionar(cmbStatus, dto.getIdStatusOcorrencia()); preencher("Título", dto.getTitulo()); preencher("Descrição", dto.getDescricao()); preencher("Data da ocorrência", dto.getDataOcorrencia()); preencher("Solução", dto.getSolucao()); preencher("Data de resolução", dto.getDataResolucao()); }
+    private void preencher(OcorrenciaDTO dto) {
+        ViewInputSupport.selecionar(cmbEquipamento, dto.getIdEquipamento());
+        ViewInputSupport.selecionar(cmbMovimentacao, dto.getIdMovimentacao());
+        ViewInputSupport.selecionar(cmbFuncionario, dto.getIdFuncionario());
+        ViewInputSupport.selecionar(cmbUsuarioRegistro, dto.getIdUsuarioRegistro());
+        ViewInputSupport.selecionar(cmbTipoOcorrencia, dto.getIdTipoOcorrencia());
+        ViewInputSupport.selecionar(cmbStatus, dto.getIdStatusOcorrencia());
+        preencher("Título", dto.getTitulo());
+        preencher("Descrição", dto.getDescricao());
+        preencherDataHora(calDataOcorrencia, spnHoraOcorrencia, dto.getDataOcorrencia());
+        preencher("Solução", dto.getSolucao());
+        preencherDataHora(calDataResolucao, spnHoraResolucao, dto.getDataResolucao());
+        atualizarCamposResolucao();
+    }
+
     private void preencher(String campo, Object valor) { ViewInputSupport.preencher(campos.get(campo), valor); }
-    private void limparFormulario() { idSelecionado = null; campos.values().forEach(c -> c.setText("")); ViewInputSupport.selecionar(cmbEquipamento, null); ViewInputSupport.selecionar(cmbMovimentacao, null); ViewInputSupport.selecionar(cmbFuncionario, null); ViewInputSupport.selecionar(cmbUsuarioRegistro, null); ViewInputSupport.selecionar(cmbTipoOcorrencia, null); ViewInputSupport.selecionar(cmbStatus, null); tblDados.clearSelection(); boolean permitido = AuthSession.podeEscrever(); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
+    private void limparFormulario() {
+        idSelecionado = null;
+        campos.values().forEach(c -> c.setText(""));
+        ViewInputSupport.selecionar(cmbEquipamento, null);
+        ViewInputSupport.selecionar(cmbMovimentacao, null);
+        ViewInputSupport.selecionar(cmbFuncionario, null);
+        ViewInputSupport.selecionar(cmbUsuarioRegistro, null);
+        ViewInputSupport.selecionar(cmbTipoOcorrencia, null);
+        ViewInputSupport.selecionar(cmbStatus, null);
+        calDataOcorrencia.setDate(null);
+        calDataResolucao.setDate(null);
+        Date agora = new Date();
+        spnHoraOcorrencia.setValue(agora);
+        spnHoraResolucao.setValue(agora);
+        tblDados.clearSelection();
+        boolean permitido = AuthSession.podeEscrever();
+        btnSalvar.setEnabled(permitido);
+        btnEditar.setEnabled(false);
+        btnExcluir.setEnabled(false);
+        atualizarCamposResolucao();
+    }
+
     private void sucesso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem); limparFormulario(); carregarDados(); }
     private void aviso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE); }
     private void erro(Exception ex) { JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE); }
 
     private void montarCampos() {
-        campos.put("Equipamento ID", txtCampo1);
-        campos.put("Movimentação ID", txtCampo2);
-        campos.put("Funcionário ID", txtCampo3);
-        campos.put("Usuário registro ID", txtCampo4);
-        campos.put("Tipo ocorrência ID", txtCampo5);
-        campos.put("Status ID", txtCampo6);
         campos.put("Título", txtCampo7);
         campos.put("Descrição", txtCampo8);
-        campos.put("Data da ocorrência", txtCampo9);
         campos.put("Solução", txtCampo10);
-        campos.put("Data de resolução", txtCampo11);
     }
 
     private void configurarSelects() {
@@ -60,12 +147,237 @@ public class OcorrenciaView extends javax.swing.JFrame {
             for (com.mycompany.almoxarifado.Dto.EquipamentoDTO item : new com.mycompany.almoxarifado.Service.EquipamentoService().listarTodos()) cmbEquipamento.addItem(new ComboItem(item.getIdEquipamento(), item.getNome()));
             for (com.mycompany.almoxarifado.Dto.MovimentacaoDTO item : new com.mycompany.almoxarifado.Service.MovimentacaoService().listarTodos()) cmbMovimentacao.addItem(new ComboItem(item.getIdMovimentacao(), "Movimentação #" + item.getIdMovimentacao()));
             for (com.mycompany.almoxarifado.Dto.FuncionarioDTO item : new com.mycompany.almoxarifado.Service.FuncionarioService().listarTodos()) cmbFuncionario.addItem(new ComboItem(item.getIdFuncionario(), item.getNome()));
-            for (com.mycompany.almoxarifado.Dto.UsuarioDTO item : new com.mycompany.almoxarifado.Service.UsuarioService().listarTodos()) cmbUsuarioRegistro.addItem(new ComboItem(item.getIdUsuario(), item.getNome()));
+            for (com.mycompany.almoxarifado.Dto.UsuarioDTO item : new com.mycompany.almoxarifado.Service.UsuarioService().listarTodos()) cmbUsuarioRegistro.addItem(new ComboItem(item.getIdUsuario(), item.getEmail()));
             for (com.mycompany.almoxarifado.Dto.TipoOcorrenciaDTO item : new com.mycompany.almoxarifado.Service.TipoOcorrenciaService().listarTodos()) cmbTipoOcorrencia.addItem(new ComboItem(item.getIdTipoOcorrencia(), item.getNome()));
             for (com.mycompany.almoxarifado.Dto.StatusOcorrenciaDTO item : new com.mycompany.almoxarifado.Service.StatusOcorrenciaService().listarTodos()) cmbStatus.addItem(new ComboItem(item.getIdStatusOcorrencia(), item.getNome()));
             cmbEquipamento.setSelectedIndex(-1); cmbMovimentacao.setSelectedIndex(-1); cmbFuncionario.setSelectedIndex(-1); cmbUsuarioRegistro.setSelectedIndex(-1); cmbTipoOcorrencia.setSelectedIndex(-1); cmbStatus.setSelectedIndex(-1);
         } catch (SQLException ex) { erro(ex); }
     }
+
+    private boolean statusResolvidaSelecionado() {
+        Object selecionado = cmbStatus.getSelectedItem();
+
+        return selecionado != null
+                && "RESOLVIDA".equalsIgnoreCase(
+                        selecionado.toString().trim()
+                );
+    }
+
+    private void atualizarCamposResolucao() {
+        boolean resolvida = statusResolvidaSelecionado();
+
+        txtCampo10.setEnabled(resolvida);
+        calDataResolucao.setEnabled(resolvida);
+        spnHoraResolucao.setEnabled(resolvida);
+
+        lblCampo10.setEnabled(resolvida);
+        lblCampo11.setEnabled(resolvida);
+
+        if (!resolvida) {
+            txtCampo10.setText("");
+            calDataResolucao.setDate(null);
+        }
+    }
+
+    private void configurarDatas() {
+        calDataOcorrencia = criarCalendario();
+        calDataResolucao = criarCalendario();
+
+        spnHoraOcorrencia = criarSpinnerHora();
+        spnHoraResolucao = criarSpinnerHora();
+
+        pnlDataOcorrencia = criarPainelDataHora(calDataOcorrencia, spnHoraOcorrencia);
+        pnlDataResolucao = criarPainelDataHora(calDataResolucao, spnHoraResolucao);
+    }
+
+    private JDateChooser criarCalendario() {
+        JDateChooser calendario = new JDateChooser();
+        calendario.setDateFormatString("dd/MM/yyyy");
+        return calendario;
+    }
+
+    private JSpinner criarSpinnerHora() {
+        SpinnerDateModel modelo = new SpinnerDateModel(
+                new Date(),
+                null,
+                null,
+                Calendar.MINUTE
+        );
+
+        JSpinner spinner = new JSpinner(modelo);
+        spinner.setEditor(new JSpinner.DateEditor(spinner, "HH:mm"));
+        spinner.setPreferredSize(new Dimension(82, 32));
+        return spinner;
+    }
+
+    private JPanel criarPainelDataHora(JDateChooser calendario, JSpinner hora) {
+        JPanel painel = new JPanel(new BorderLayout(6, 0));
+        painel.setOpaque(false);
+        calendario.setPreferredSize(new Dimension(180, 32));
+        painel.add(calendario, BorderLayout.CENTER);
+        painel.add(hora, BorderLayout.EAST);
+        return painel;
+    }
+
+    private LocalDateTime lerDataHora(
+            JDateChooser calendario,
+            JSpinner spinnerHora,
+            String nomeCampo,
+            boolean obrigatorio
+    ) {
+        Date dataSelecionada = calendario.getDate();
+
+        if (dataSelecionada == null) {
+            if (obrigatorio) {
+                throw new IllegalArgumentException(nomeCampo + " é obrigatória.");
+            }
+            return null;
+        }
+
+        Date horaSelecionada = (Date) spinnerHora.getValue();
+
+        java.time.LocalDate data = dataSelecionada
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        java.time.LocalTime hora = horaSelecionada
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+                .withSecond(0)
+                .withNano(0);
+
+        return LocalDateTime.of(data, hora);
+    }
+
+    private void preencherDataHora(
+            JDateChooser calendario,
+            JSpinner spinnerHora,
+            LocalDateTime valor
+    ) {
+        if (valor == null) {
+            calendario.setDate(null);
+            spinnerHora.setValue(new Date());
+            return;
+        }
+
+        Date data = Date.from(
+                valor.atZone(ZoneId.systemDefault()).toInstant()
+        );
+
+        calendario.setDate(data);
+        spinnerHora.setValue(data);
+    }
+
+    private void ajustarLayoutFormulario() {
+        pnlCampos.removeAll();
+        pnlCampos.setLayout(new GridBagLayout());
+        pnlCampos.setBackground(java.awt.Color.WHITE);
+        pnlCampos.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        java.awt.Font fonte = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12);
+
+        javax.swing.JLabel[] labels = {
+            lblCampo1, lblCampo2, lblCampo3, lblCampo4, lblCampo5, lblCampo6,
+            lblCampo7, lblCampo8, lblCampo9, lblCampo10, lblCampo11
+        };
+
+        for (javax.swing.JLabel label : labels) {
+            label.setFont(fonte);
+        }
+
+        adicionarCampo(lblCampo1, cmbEquipamento, 0, 0);
+        adicionarCampo(lblCampo2, cmbMovimentacao, 2, 0);
+
+        adicionarCampo(lblCampo3, cmbFuncionario, 0, 1);
+        adicionarCampo(lblCampo4, cmbUsuarioRegistro, 2, 1);
+
+        adicionarCampo(lblCampo5, cmbTipoOcorrencia, 0, 2);
+        adicionarCampo(lblCampo6, cmbStatus, 2, 2);
+
+        adicionarCampo(lblCampo7, txtCampo7, 0, 3);
+        adicionarCampo(lblCampo9, pnlDataOcorrencia, 2, 3);
+
+        adicionarCampo(lblCampo8, txtCampo8, 0, 4);
+        adicionarCampo(lblCampo10, txtCampo10, 2, 4);
+
+        adicionarCampo(lblCampo11, pnlDataResolucao, 0, 5);
+
+        javax.swing.JPanel pnlAcoes = new javax.swing.JPanel(
+                new FlowLayout(FlowLayout.RIGHT, 12, 0)
+        );
+        pnlAcoes.setOpaque(false);
+        pnlAcoes.add(btnNovo);
+        pnlAcoes.add(btnSalvar);
+        pnlAcoes.add(btnEditar);
+        pnlAcoes.add(btnExcluir);
+
+        pnlFormulario.removeAll();
+        pnlFormulario.setLayout(new BorderLayout(0, 14));
+        pnlFormulario.add(pnlCampos, BorderLayout.CENTER);
+        pnlFormulario.add(pnlAcoes, BorderLayout.SOUTH);
+        pnlFormulario.setPreferredSize(new Dimension(950, 360));
+
+        pnlPesquisa.removeAll();
+        pnlPesquisa.setLayout(new BorderLayout(16, 0));
+        pnlPesquisa.setBorder(
+                javax.swing.BorderFactory.createCompoundBorder(
+                        javax.swing.BorderFactory.createLineBorder(
+                                new java.awt.Color(179, 179, 179)
+                        ),
+                        javax.swing.BorderFactory.createEmptyBorder(14, 16, 14, 16)
+                )
+        );
+        pnlPesquisa.add(lblBuscar, BorderLayout.WEST);
+        pnlPesquisa.add(txtBuscar, BorderLayout.CENTER);
+
+        tblDados.setRowHeight(26);
+        tblDados.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tblDados.getTableHeader().setReorderingAllowed(false);
+
+        jPanel1.setPreferredSize(new Dimension(1000, 760));
+        setMinimumSize(new Dimension(1030, 790));
+
+        pnlCampos.revalidate();
+        pnlCampos.repaint();
+        pnlFormulario.revalidate();
+        pnlFormulario.repaint();
+        pnlPesquisa.revalidate();
+        pnlPesquisa.repaint();
+
+        pack();
+        setLocationRelativeTo(null);
+    }
+
+    private void adicionarCampo(
+            javax.swing.JLabel label,
+            java.awt.Component campo,
+            int coluna,
+            int linha
+    ) {
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = coluna;
+        gbcLabel.gridy = linha;
+        gbcLabel.weightx = 0;
+        gbcLabel.fill = GridBagConstraints.NONE;
+        gbcLabel.anchor = GridBagConstraints.WEST;
+        gbcLabel.insets = new Insets(7, 0, 7, 12);
+
+        pnlCampos.add(label, gbcLabel);
+
+        GridBagConstraints gbcCampo = new GridBagConstraints();
+        gbcCampo.gridx = coluna + 1;
+        gbcCampo.gridy = linha;
+        gbcCampo.weightx = 1;
+        gbcCampo.fill = GridBagConstraints.HORIZONTAL;
+        gbcCampo.anchor = GridBagConstraints.WEST;
+        gbcCampo.insets = new Insets(7, 0, 7, coluna == 0 ? 24 : 0);
+
+        campo.setPreferredSize(new Dimension(250, 32));
+        pnlCampos.add(campo, gbcCampo);
+    }
+
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
         jPanel1 = new javax.swing.JPanel();
@@ -93,7 +405,6 @@ public class OcorrenciaView extends javax.swing.JFrame {
         txtCampo10 = new javax.swing.JTextField();
         lblCampo11 = new javax.swing.JLabel();
         txtCampo11 = new javax.swing.JTextField();
-        scrollCampos = new javax.swing.JScrollPane();
         pnlPesquisa = new javax.swing.JPanel();
         lblTituloFormulario = new javax.swing.JLabel();
         lblTituloPesquisa = new javax.swing.JLabel();
@@ -109,10 +420,11 @@ public class OcorrenciaView extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Almoxarifado - Ocorrências");
+        setMinimumSize(new java.awt.Dimension(1030, 790));
         getContentPane().setBackground(new java.awt.Color(248, 249, 250));
 
         jPanel1.setBackground(new java.awt.Color(248, 249, 250));
-        jPanel1.setPreferredSize(new java.awt.Dimension(719, 600));
+        jPanel1.setPreferredSize(new java.awt.Dimension(1000, 760));
         pnlFormulario.setBackground(java.awt.Color.WHITE);
         pnlFormulario.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
         pnlPesquisa.setBackground(java.awt.Color.WHITE);
@@ -136,7 +448,6 @@ public class OcorrenciaView extends javax.swing.JFrame {
         lblCampo9.setFont(tituloFont); lblCampo9.setText("Data da ocorrência:"); pnlCampos.add(lblCampo9); pnlCampos.add(txtCampo9);
         lblCampo10.setFont(tituloFont); lblCampo10.setText("Solução:"); pnlCampos.add(lblCampo10); pnlCampos.add(txtCampo10);
         lblCampo11.setFont(tituloFont); lblCampo11.setText("Data de resolução:"); pnlCampos.add(lblCampo11); pnlCampos.add(txtCampo11);
-        scrollCampos.setViewportView(pnlCampos);
 
         btnNovo.setBackground(new java.awt.Color(0, 78, 174)); btnNovo.setFont(tituloFont); btnNovo.setForeground(java.awt.Color.WHITE); btnNovo.setText("+ Novo"); btnNovo.setPreferredSize(new java.awt.Dimension(86, 38));
         btnSalvar.setBackground(new java.awt.Color(53, 158, 77)); btnSalvar.setFont(tituloFont); btnSalvar.setForeground(java.awt.Color.WHITE); btnSalvar.setText("Salvar"); btnSalvar.setPreferredSize(new java.awt.Dimension(87, 38));
@@ -148,8 +459,8 @@ public class OcorrenciaView extends javax.swing.JFrame {
 
         javax.swing.GroupLayout formularioLayout = new javax.swing.GroupLayout(pnlFormulario);
         pnlFormulario.setLayout(formularioLayout);
-        formularioLayout.setHorizontalGroup(formularioLayout.createSequentialGroup().addGap(14).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addComponent(scrollCampos, 0, 665, Short.MAX_VALUE).addGroup(javax.swing.GroupLayout.Alignment.TRAILING, formularioLayout.createSequentialGroup().addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(8).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14)));
-        formularioLayout.setVerticalGroup(formularioLayout.createSequentialGroup().addGap(14).addComponent(scrollCampos, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14));
+        formularioLayout.setHorizontalGroup(formularioLayout.createSequentialGroup().addGap(14).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addComponent(pnlCampos, 0, 665, Short.MAX_VALUE).addGroup(javax.swing.GroupLayout.Alignment.TRAILING, formularioLayout.createSequentialGroup().addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(8).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14)));
+        formularioLayout.setVerticalGroup(formularioLayout.createSequentialGroup().addGap(14).addComponent(pnlCampos, javax.swing.GroupLayout.PREFERRED_SIZE, 290, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14));
 
         javax.swing.GroupLayout pesquisaLayout = new javax.swing.GroupLayout(pnlPesquisa);
         pnlPesquisa.setLayout(pesquisaLayout);
@@ -195,7 +506,6 @@ public class OcorrenciaView extends javax.swing.JFrame {
     private javax.swing.JPanel pnlCampos;
     private javax.swing.JPanel pnlFormulario;
     private javax.swing.JPanel pnlPesquisa;
-    private javax.swing.JScrollPane scrollCampos;
     private javax.swing.JScrollPane scrollDados;
     private javax.swing.JTable tblDados;
     private javax.swing.JTextField txtCampo1;

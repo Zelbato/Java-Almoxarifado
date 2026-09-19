@@ -3,6 +3,12 @@ package com.mycompany.almoxarifado.View;
 import com.mycompany.almoxarifado.Dto.LocalizacaoDTO;
 import com.mycompany.almoxarifado.Service.LocalizacaoService;
 import com.mycompany.almoxarifado.Service.AuthSession;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -17,7 +23,17 @@ public class LocalizacaoView extends javax.swing.JFrame {
     private final Map<String, JTextField> campos = new LinkedHashMap<>();
     private Long idSelecionado;
 
-    public LocalizacaoView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
+    public LocalizacaoView() {
+        AuthSession.exigirAutenticacao();
+        initComponents();
+        montarCampos();
+        ajustarLayoutFormulario();
+        ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir);
+        configurarEventos();
+        aplicarPermissoes();
+        limparFormulario();
+        carregarDados();
+    }
 
     private void configurarEventos() {
         btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
@@ -41,6 +57,105 @@ public class LocalizacaoView extends javax.swing.JFrame {
         campos.put("Nome", txtCampo1);
         campos.put("Corredor", txtCampo2);
         campos.put("Prateleira", txtCampo3);
+    }
+
+    private void ajustarLayoutFormulario() {
+        scrollCampos.setViewportView(null);
+
+        pnlCampos.removeAll();
+        pnlCampos.setLayout(new GridBagLayout());
+        pnlCampos.setBackground(java.awt.Color.WHITE);
+        pnlCampos.setBorder(javax.swing.BorderFactory.createEmptyBorder(14, 14, 14, 14));
+
+        java.awt.Font fonte = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12);
+
+        lblCampo1.setFont(fonte);
+        lblCampo2.setFont(fonte);
+        lblCampo3.setFont(fonte);
+
+        txtCampo1.setPreferredSize(new Dimension(300, 32));
+        txtCampo2.setPreferredSize(new Dimension(300, 32));
+        txtCampo3.setPreferredSize(new Dimension(300, 32));
+
+        adicionarCampo(lblCampo1, txtCampo1, 0, 0);
+        adicionarCampo(lblCampo2, txtCampo2, 2, 0);
+        adicionarCampo(lblCampo3, txtCampo3, 0, 1);
+
+        javax.swing.JLabel lblStatus = new javax.swing.JLabel("Status:");
+        lblStatus.setFont(fonte);
+        adicionarCampo(lblStatus, chkAtivo, 2, 1);
+
+        javax.swing.JPanel pnlAcoes = new javax.swing.JPanel(
+                new FlowLayout(FlowLayout.RIGHT, 12, 0)
+        );
+        pnlAcoes.setOpaque(false);
+        pnlAcoes.add(btnNovo);
+        pnlAcoes.add(btnSalvar);
+        pnlAcoes.add(btnEditar);
+        pnlAcoes.add(btnExcluir);
+
+        pnlFormulario.removeAll();
+        pnlFormulario.setLayout(new BorderLayout(0, 14));
+        pnlFormulario.add(pnlCampos, BorderLayout.NORTH);
+        pnlFormulario.add(pnlAcoes, BorderLayout.SOUTH);
+        pnlFormulario.setPreferredSize(new Dimension(950, 240));
+
+        pnlPesquisa.removeAll();
+        pnlPesquisa.setLayout(new BorderLayout(16, 0));
+        pnlPesquisa.setBorder(
+                javax.swing.BorderFactory.createCompoundBorder(
+                        javax.swing.BorderFactory.createLineBorder(
+                                new java.awt.Color(179, 179, 179)
+                        ),
+                        javax.swing.BorderFactory.createEmptyBorder(14, 16, 14, 16)
+                )
+        );
+        pnlPesquisa.add(lblBuscar, BorderLayout.WEST);
+        pnlPesquisa.add(txtBuscar, BorderLayout.CENTER);
+
+        tblDados.setRowHeight(26);
+        tblDados.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tblDados.getTableHeader().setReorderingAllowed(false);
+
+        jPanel1.setPreferredSize(new Dimension(1000, 760));
+        setMinimumSize(new Dimension(1030, 790));
+
+        pnlCampos.revalidate();
+        pnlCampos.repaint();
+        pnlFormulario.revalidate();
+        pnlFormulario.repaint();
+        pnlPesquisa.revalidate();
+        pnlPesquisa.repaint();
+
+        pack();
+        setLocationRelativeTo(null);
+    }
+
+    private void adicionarCampo(
+            javax.swing.JLabel label,
+            java.awt.Component campo,
+            int coluna,
+            int linha
+    ) {
+        GridBagConstraints gbcLabel = new GridBagConstraints();
+        gbcLabel.gridx = coluna;
+        gbcLabel.gridy = linha;
+        gbcLabel.weightx = 0;
+        gbcLabel.fill = GridBagConstraints.NONE;
+        gbcLabel.anchor = GridBagConstraints.WEST;
+        gbcLabel.insets = new Insets(8, 0, 8, 12);
+
+        pnlCampos.add(label, gbcLabel);
+
+        GridBagConstraints gbcCampo = new GridBagConstraints();
+        gbcCampo.gridx = coluna + 1;
+        gbcCampo.gridy = linha;
+        gbcCampo.weightx = 1;
+        gbcCampo.fill = GridBagConstraints.HORIZONTAL;
+        gbcCampo.anchor = GridBagConstraints.WEST;
+        gbcCampo.insets = new Insets(8, 0, 8, coluna == 0 ? 24 : 0);
+
+        pnlCampos.add(campo, gbcCampo);
     }
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {

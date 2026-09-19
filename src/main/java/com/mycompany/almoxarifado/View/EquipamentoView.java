@@ -35,14 +35,37 @@ public class EquipamentoView extends javax.swing.JFrame {
     public EquipamentoView() {
         AuthSession.exigirAutenticacao();
         initComponents();
+        configurarTabela();
         montarCampos();
         configurarSelects();
         configurarDatas();
+        ajustarLayoutFormulario();
         aplicarEstilo();
         configurarEventos();
         aplicarPermissoes();
         limparFormulario();
         carregarDados();
+    }
+
+    private void configurarTabela() {
+        tblDados.setModel(new javax.swing.table.DefaultTableModel(
+                new Object[][]{},
+                new String[]{
+                    "ID",
+                    "Nome",
+                    "Categoria",
+                    "Localização",
+                    "Patrimônio",
+                    "Marca",
+                    "Modelo",
+                    "Status"
+                }
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        });
     }
 
     private void configurarEventos() {
@@ -211,7 +234,7 @@ public class EquipamentoView extends javax.swing.JFrame {
     }
 
     private void montarCampos() {
-        pnlCampos.setLayout(new java.awt.GridLayout(0, 2, 12, 10));
+        pnlCampos.setLayout(new java.awt.GridLayout(0, 4, 16, 10));
         for (String nome : new String[]{"Categoria", "Localização", "Estado de conservação", "Situação", "Nome", "Valor", "Descrição", "Marca", "Modelo", "Patrimônio", "Número de série", "Data de aquisição"}) {
             javax.swing.JLabel label = new javax.swing.JLabel(nome + ":");
             label.setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12));
@@ -223,7 +246,6 @@ public class EquipamentoView extends javax.swing.JFrame {
         chkAtivo = new javax.swing.JCheckBox("Ativo");
         pnlCampos.add(chkAtivo);
         pnlCampos.add(new javax.swing.JLabel());
-        scrollCampos.setViewportView(pnlCampos);
     }
 
     private void configurarSelects() {
@@ -245,6 +267,34 @@ public class EquipamentoView extends javax.swing.JFrame {
         calDataAquisicao = new JDateChooser();
         calDataAquisicao.setDateFormatString("dd/MM/yyyy");
         ViewInputSupport.substituirNoPainel(pnlCampos, campos.get("Data de aquisição"), calDataAquisicao);
+    }
+
+    private void ajustarLayoutFormulario() {
+        scrollCampos.setViewportView(null);
+
+        javax.swing.JPanel pnlAcoes = new javax.swing.JPanel(
+                new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 12, 0)
+        );
+        pnlAcoes.setOpaque(false);
+        pnlAcoes.add(btnNovo);
+        pnlAcoes.add(btnSalvar);
+        pnlAcoes.add(btnEditar);
+        pnlAcoes.add(btnExcluir);
+
+        pnlCampos.setBackground(java.awt.Color.WHITE);
+        pnlCampos.setBorder(javax.swing.BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        pnlFormulario.removeAll();
+        pnlFormulario.setLayout(new java.awt.BorderLayout(0, 14));
+        pnlFormulario.add(pnlCampos, java.awt.BorderLayout.CENTER);
+        pnlFormulario.add(pnlAcoes, java.awt.BorderLayout.SOUTH);
+
+        pnlFormulario.setPreferredSize(new java.awt.Dimension(950, 330));
+        jPanel1.setPreferredSize(new java.awt.Dimension(1000, 760));
+        setMinimumSize(new java.awt.Dimension(1030, 790));
+
+        pnlFormulario.revalidate();
+        pnlFormulario.repaint();
     }
 
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents

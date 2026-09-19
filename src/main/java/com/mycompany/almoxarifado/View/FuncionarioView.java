@@ -5,6 +5,9 @@ import com.mycompany.almoxarifado.Dto.SetorDTO;
 import com.mycompany.almoxarifado.Service.FuncionarioService;
 import com.mycompany.almoxarifado.Service.AuthSession;
 import com.mycompany.almoxarifado.Service.SetorService;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -23,7 +26,19 @@ public class FuncionarioView extends javax.swing.JFrame {
     private JComboBox<ComboItem> cmbSetor;
     private JDateChooser calDataAdmissao, calDataDemissao;
 
-    public FuncionarioView() { AuthSession.exigirAutenticacao(); initComponents(); montarCampos(); configurarSelects(); configurarDatas(); ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir); configurarEventos(); aplicarPermissoes(); limparFormulario(); carregarDados(); }
+    public FuncionarioView() {
+        AuthSession.exigirAutenticacao();
+        initComponents();
+        montarCampos();
+        configurarSelects();
+        configurarDatas();
+        ajustarLayoutFormulario();
+        ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir);
+        configurarEventos();
+        aplicarPermissoes();
+        limparFormulario();
+        carregarDados();
+    }
 
     private void configurarEventos() {
         btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
@@ -73,6 +88,62 @@ public class FuncionarioView extends javax.swing.JFrame {
         calDataDemissao.setDateFormatString("dd/MM/yyyy");
         ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo6, calDataAdmissao);
         ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo7, calDataDemissao);
+    }
+
+    private void ajustarLayoutFormulario() {
+        scrollCampos.setViewportView(null);
+
+        pnlCampos.setLayout(new java.awt.GridLayout(0, 4, 16, 12));
+        pnlCampos.setBackground(java.awt.Color.WHITE);
+        pnlCampos.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+
+        for (java.awt.Component componente : pnlCampos.getComponents()) {
+            if (componente instanceof JTextField
+                    || componente instanceof JComboBox
+                    || componente instanceof JDateChooser) {
+                componente.setPreferredSize(new Dimension(200, 32));
+            }
+        }
+
+        javax.swing.JPanel pnlAcoes = new javax.swing.JPanel(
+                new FlowLayout(FlowLayout.RIGHT, 12, 0)
+        );
+        pnlAcoes.setOpaque(false);
+        pnlAcoes.add(btnNovo);
+        pnlAcoes.add(btnSalvar);
+        pnlAcoes.add(btnEditar);
+        pnlAcoes.add(btnExcluir);
+
+        pnlFormulario.removeAll();
+        pnlFormulario.setLayout(new BorderLayout(0, 14));
+        pnlFormulario.add(pnlCampos, BorderLayout.CENTER);
+        pnlFormulario.add(pnlAcoes, BorderLayout.SOUTH);
+        pnlFormulario.setPreferredSize(new Dimension(950, 240));
+
+        pnlPesquisa.removeAll();
+        pnlPesquisa.setLayout(new BorderLayout(16, 0));
+        pnlPesquisa.setBorder(
+                javax.swing.BorderFactory.createCompoundBorder(
+                        javax.swing.BorderFactory.createLineBorder(
+                                new java.awt.Color(179, 179, 179)
+                        ),
+                        javax.swing.BorderFactory.createEmptyBorder(14, 16, 14, 16)
+                )
+        );
+        pnlPesquisa.add(lblBuscar, BorderLayout.WEST);
+        pnlPesquisa.add(txtBuscar, BorderLayout.CENTER);
+
+        tblDados.setRowHeight(26);
+        tblDados.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        tblDados.getTableHeader().setReorderingAllowed(false);
+
+        jPanel1.setPreferredSize(new Dimension(1000, 760));
+        setMinimumSize(new Dimension(1030, 790));
+
+        pnlFormulario.revalidate();
+        pnlFormulario.repaint();
+        pnlPesquisa.revalidate();
+        pnlPesquisa.repaint();
     }
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {

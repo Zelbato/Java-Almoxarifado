@@ -39,6 +39,7 @@ public class SetorView extends javax.swing.JFrame {
         configurarTela();
         configurarTabela();
         estilizarTela();
+        ajustarLayoutPadrao();
         limparFormulario();
         carregarSetores();
         if (!AuthSession.podeEscrever()) {
@@ -110,38 +111,181 @@ public class SetorView extends javax.swing.JFrame {
         btnEditar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnDesativar.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        tblSetores.setRowHeight(32);
+        tblSetores.setRowHeight(26);
         tblSetores.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
         tblSetores.getTableHeader().setFont(
                 new Font("Segoe UI", Font.BOLD, 13)
         );
 
-        tblSetores.getTableHeader().setPreferredSize(
-                new Dimension(
-                        tblSetores.getTableHeader().getPreferredSize().width,
-                        35
-                )
-        );
-
-        tblSetores.setShowGrid(true);
-        tblSetores.setShowHorizontalLines(true);
-        tblSetores.setShowVerticalLines(true);
-        tblSetores.setGridColor(new Color(210, 210, 210));
-        tblSetores.setIntercellSpacing(new Dimension(1, 1));
+        tblSetores.getTableHeader().setReorderingAllowed(false);
 
         tblSetores.setSelectionMode(
                 ListSelectionModel.SINGLE_SELECTION
         );
+    }
 
-        JScrollBar scrollVertical
-                = scrollSetores.getVerticalScrollBar();
 
-        scrollVertical.setPreferredSize(
-                new Dimension(10, 0)
+    private void ajustarLayoutPadrao() {
+        jPanel1.setPreferredSize(new Dimension(1000, 760));
+        setMinimumSize(new Dimension(1030, 790));
+
+        pnlFormulario.setBackground(Color.WHITE);
+        pnlFormulario.setPreferredSize(new Dimension(950, 220));
+        pnlFormulario.setBorder(
+                new javax.swing.border.LineBorder(
+                        new Color(179, 179, 179),
+                        1,
+                        true
+                )
+        );
+        pnlFormulario.setLayout(new BorderLayout());
+
+        JPanel pnlCampos = new JPanel(new GridBagLayout());
+        pnlCampos.setBackground(Color.WHITE);
+        pnlCampos.setBorder(
+                BorderFactory.createEmptyBorder(
+                        18,
+                        16,
+                        8,
+                        16
+                )
         );
 
-        scrollVertical.setUnitIncrement(16);
+        txtNome.setPreferredSize(new Dimension(300, 32));
+        txtDescricao.setPreferredSize(new Dimension(300, 32));
+        chkAtivo.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 0;
+        gbc.insets = new Insets(8, 0, 8, 12);
+        pnlCampos.add(lblNome, gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 1;
+        gbc.insets = new Insets(8, 0, 8, 28);
+        pnlCampos.add(txtNome, gbc);
+
+        gbc.gridx = 2;
+        gbc.weightx = 0;
+        gbc.insets = new Insets(8, 0, 8, 12);
+        pnlCampos.add(lblDescricao, gbc);
+
+        gbc.gridx = 3;
+        gbc.weightx = 1;
+        gbc.insets = new Insets(8, 0, 8, 0);
+        pnlCampos.add(txtDescricao, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 0;
+        gbc.insets = new Insets(8, 0, 8, 12);
+        pnlCampos.add(lblStatus, gbc);
+
+        gbc.gridx = 1;
+        gbc.gridwidth = 3;
+        gbc.weightx = 1;
+        gbc.insets = new Insets(8, 0, 8, 0);
+        pnlCampos.add(chkAtivo, gbc);
+
+        JPanel pnlAcoes = new JPanel(
+                new FlowLayout(
+                        FlowLayout.RIGHT,
+                        12,
+                        0
+                )
+        );
+        pnlAcoes.setOpaque(false);
+        pnlAcoes.setBorder(
+                BorderFactory.createEmptyBorder(
+                        8,
+                        0,
+                        14,
+                        14
+                )
+        );
+        pnlAcoes.add(btnNovo);
+        pnlAcoes.add(btnSalvar);
+        pnlAcoes.add(btnEditar);
+        pnlAcoes.add(btnDesativar);
+
+        pnlFormulario.removeAll();
+        pnlFormulario.add(pnlCampos, BorderLayout.NORTH);
+        pnlFormulario.add(pnlAcoes, BorderLayout.SOUTH);
+
+        jPanel2.setBackground(Color.WHITE);
+        jPanel2.setPreferredSize(new Dimension(950, 55));
+        jPanel2.setLayout(new BorderLayout(16, 0));
+        jPanel2.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(
+                                new Color(179, 179, 179)
+                        ),
+                        BorderFactory.createEmptyBorder(
+                                14,
+                                16,
+                                14,
+                                16
+                        )
+                )
+        );
+        jPanel2.removeAll();
+        jPanel2.add(lblBuscar, BorderLayout.WEST);
+        jPanel2.add(txtBuscar, BorderLayout.CENTER);
+
+        scrollSetores.setPreferredSize(new Dimension(950, 189));
+
+        jPanel1.removeAll();
+        jPanel1.setBackground(new Color(248, 249, 250));
+        jPanel1.setLayout(new GridBagLayout());
+
+        GridBagConstraints externo = new GridBagConstraints();
+        externo.gridx = 0;
+        externo.weightx = 1;
+        externo.fill = GridBagConstraints.HORIZONTAL;
+        externo.anchor = GridBagConstraints.NORTHWEST;
+        externo.insets = new Insets(0, 25, 0, 25);
+
+        externo.gridy = 0;
+        externo.insets = new Insets(31, 25, 6, 25);
+        jPanel1.add(lblTituloFormulario, externo);
+
+        externo.gridy = 1;
+        externo.insets = new Insets(0, 25, 18, 25);
+        jPanel1.add(pnlFormulario, externo);
+
+        externo.gridy = 2;
+        externo.insets = new Insets(0, 25, 6, 25);
+        jPanel1.add(lblTituloPesquisa, externo);
+
+        externo.gridy = 3;
+        externo.insets = new Insets(0, 25, 20, 25);
+        jPanel1.add(jPanel2, externo);
+
+        externo.gridy = 4;
+        externo.insets = new Insets(0, 25, 6, 25);
+        jPanel1.add(lblTituloLista, externo);
+
+        externo.gridy = 5;
+        externo.fill = GridBagConstraints.BOTH;
+        externo.weighty = 1;
+        externo.insets = new Insets(0, 25, 20, 25);
+        jPanel1.add(scrollSetores, externo);
+
+        pnlFormulario.revalidate();
+        pnlFormulario.repaint();
+        jPanel2.revalidate();
+        jPanel2.repaint();
+        jPanel1.revalidate();
+        jPanel1.repaint();
+
+        pack();
+        setLocationRelativeTo(null);
     }
 
     private void cadastrar() {
@@ -435,7 +579,7 @@ public class SetorView extends javax.swing.JFrame {
         scrollSetores = new javax.swing.JScrollPane();
         tblSetores = new javax.swing.JTable();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setBackground(new java.awt.Color(255, 255, 255));
 
         pnlFormulario.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
