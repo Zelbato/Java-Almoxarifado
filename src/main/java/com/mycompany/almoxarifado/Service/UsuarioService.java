@@ -27,7 +27,7 @@ public class UsuarioService {
     }
 
     public void cadastrar(UsuarioDTO usuario) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
 
         validar(usuario, true);
         validarFuncionario(usuario.getIdFuncionario());
@@ -49,10 +49,12 @@ public class UsuarioService {
     }
 
     public List<UsuarioDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
         return usuarioDAO.listarTodos();
     }
 
     public UsuarioDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
 
         validarId(id);
 
@@ -68,7 +70,7 @@ public class UsuarioService {
     }
 
     public void atualizar(UsuarioDTO usuario) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
 
         if (usuario == null) {
             throw new IllegalArgumentException(
@@ -119,7 +121,7 @@ public class UsuarioService {
     }
 
     public void excluir(Long id) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
 
         validarId(id);
 

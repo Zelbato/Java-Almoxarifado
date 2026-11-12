@@ -23,7 +23,7 @@ public class LocalizacaoService {
     }
 
     public void cadastrar(LocalizacaoDTO localizacao) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
         validar(localizacao);
 
         if (localizacaoDAO.existe(
@@ -40,10 +40,12 @@ public class LocalizacaoService {
     }
 
     public List<LocalizacaoDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
         return localizacaoDAO.listarTodos();
     }
 
     public LocalizacaoDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
         validarId(id);
 
         LocalizacaoDTO localizacao
@@ -59,7 +61,7 @@ public class LocalizacaoService {
     }
 
     public void atualizar(LocalizacaoDTO localizacao) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
         if (localizacao == null) {
             throw new IllegalArgumentException(
                     "Localização não informada."
@@ -95,7 +97,7 @@ public class LocalizacaoService {
     }
 
     public void excluir(Long id) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
         validarId(id);
 
         LocalizacaoDTO localizacao

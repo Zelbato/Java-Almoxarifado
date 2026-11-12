@@ -26,20 +26,32 @@ public final class AuthSession {
     public static synchronized UsuarioDTO usuario() { return usuario; }
     public static synchronized String tipoUsuario() { return tipoUsuario; }
 
-    public static synchronized boolean podeEscrever() {
-        if (!estaAutenticado()) return false;
-        return switch (tipoUsuario) {
-            case "ADMINISTRADOR", "ALMOXARIFADO_CHEFE", "ALMOXARIFE", "GERENTE" -> true;
-            default -> false;
-        };
+    public static synchronized boolean ehChefe() {
+        return estaAutenticado() && "ALMOXARIFADO_CHEFE".equals(tipoUsuario);
     }
 
+    public static synchronized boolean ehJunior() {
+        return estaAutenticado() && "ALMOXARIFADO_JUNIOR".equals(tipoUsuario);
+    }
+
+    // Chefe e Júnior registram operações (retirada, devolução, manutenção, ocorrência)
+    public static synchronized boolean podeEscrever() {
+        return ehChefe() || ehJunior();
+    }
+
+    // As telas já mostram a mensagem de IllegalArgumentException, por isso
+    // o bloqueio de permissão usa ela também.
     public static synchronized void exigirAutenticacao() {
-        if (!estaAutenticado()) throw new SecurityException("É necessário fazer login para acessar o sistema.");
+        if (!estaAutenticado()) throw new IllegalArgumentException("É necessário fazer login para acessar o sistema.");
     }
 
     public static synchronized void exigirEscrita() {
         exigirAutenticacao();
-        if (!podeEscrever()) throw new SecurityException("Seu perfil possui acesso somente para visualização.");
+        if (!podeEscrever()) throw new IllegalArgumentException("Seu perfil possui acesso somente para visualização.");
+    }
+
+    public static synchronized void exigirChefe() {
+        exigirAutenticacao();
+        if (!ehChefe()) throw new IllegalArgumentException("Somente o Almoxarifado Chefe pode realizar esta ação.");
     }
 }

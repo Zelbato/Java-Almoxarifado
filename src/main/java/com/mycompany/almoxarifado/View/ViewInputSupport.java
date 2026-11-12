@@ -62,6 +62,55 @@ final class ViewInputSupport {
         campo.setSelectedIndex(-1);
     }
 
+    // campos de data + hora (JDateChooser e JSpinner) usados nas manutenções e ocorrências
+    static void configurarHora(javax.swing.JSpinner... spinners) {
+        for (javax.swing.JSpinner spinner : spinners) {
+            spinner.setModel(new javax.swing.SpinnerDateModel(new java.util.Date(), null, null, java.util.Calendar.MINUTE));
+            spinner.setEditor(new javax.swing.JSpinner.DateEditor(spinner, "HH:mm"));
+        }
+    }
+
+    static LocalDateTime dataHora(JDateChooser data, javax.swing.JSpinner hora, String nome, boolean obrigatoria) {
+        if (data.getDate() == null) {
+            if (obrigatoria) throw new IllegalArgumentException(nome + " é obrigatória.");
+            return null;
+        }
+        java.time.ZoneId zona = java.time.ZoneId.systemDefault();
+        LocalDate dia = data.getDate().toInstant().atZone(zona).toLocalDate();
+        java.time.LocalTime horario = ((java.util.Date) hora.getValue()).toInstant().atZone(zona).toLocalTime().withSecond(0).withNano(0);
+        return LocalDateTime.of(dia, horario);
+    }
+
+    static void selecionar(JDateChooser data, javax.swing.JSpinner hora, LocalDateTime valor) {
+        if (valor == null) {
+            data.setDate(null);
+            hora.setValue(new java.util.Date());
+            return;
+        }
+        java.util.Date convertido = java.util.Date.from(valor.atZone(java.time.ZoneId.systemDefault()).toInstant());
+        data.setDate(convertido);
+        hora.setValue(convertido);
+    }
+
+    // datas na tabela no formato brasileiro
+    static String formatar(LocalDate data) {
+        return data == null ? "" : DATA_BR.format(data);
+    }
+
+    static String formatar(LocalDateTime dataHora) {
+        return dataHora == null ? "" : DATA_HORA_BR.format(dataHora);
+    }
+
+    // usado nas tabelas para mostrar o nome em vez do id
+    static String nomeDoItem(JComboBox<ComboItem> campo, Long id) {
+        for (int indice = 0; indice < campo.getItemCount(); indice++) {
+            if (campo.getItemAt(indice).getId().equals(id)) {
+                return campo.getItemAt(indice).toString();
+            }
+        }
+        return String.valueOf(id);
+    }
+
     static void substituirNoPainel(JPanel painel, JComponent antigo, JComponent novo) {
         java.awt.Component[] componentes = painel.getComponents();
         for (int indice = 0; indice < componentes.length; indice++) {

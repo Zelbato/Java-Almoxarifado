@@ -39,10 +39,12 @@ public class OcorrenciaService {
     }
 
     public List<OcorrenciaDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
         return ocorrenciaDAO.listarTodos();
     }
 
     public OcorrenciaDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
         validarId(id);
         OcorrenciaDTO ocorrencia = ocorrenciaDAO.buscarPorId(id);
 
@@ -72,7 +74,8 @@ public class OcorrenciaService {
     }
 
     public void excluir(Long id) throws SQLException {
-        AuthSession.exigirEscrita();
+        // Júnior registra ocorrência mas não apaga
+        AuthSession.exigirChefe();
         buscarPorId(id);
         ocorrenciaDAO.excluir(id);
     }
@@ -128,14 +131,23 @@ public class OcorrenciaService {
             );
         }
 
-        if (ocorrencia.getIdMovimentacao() != null
-                && movimentacaoDAO.buscarPorId(
-                        ocorrencia.getIdMovimentacao()
-                ) == null) {
-
-            throw new IllegalArgumentException(
-                    "Movimentação não encontrada."
+        if (ocorrencia.getIdMovimentacao() != null) {
+            var movimentacao = movimentacaoDAO.buscarPorId(
+                    ocorrencia.getIdMovimentacao()
             );
+
+            if (movimentacao == null) {
+                throw new IllegalArgumentException(
+                        "Movimentação não encontrada."
+                );
+            }
+
+            if (!movimentacao.getIdEquipamento()
+                    .equals(ocorrencia.getIdEquipamento())) {
+                throw new IllegalArgumentException(
+                        "A movimentação informada não é do mesmo equipamento da ocorrência."
+                );
+            }
         }
 
         if (ocorrencia.getIdFuncionario() != null

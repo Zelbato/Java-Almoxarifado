@@ -20,7 +20,10 @@ import java.util.List;
  */
 public class ManutencaoDAO {
 
-    public void cadastrar(ManutencaoDTO manutencao) throws SQLException {
+    public void cadastrar(
+            Connection connection,
+            ManutencaoDTO manutencao
+    ) throws SQLException {
 
         String sql = """
                  INSERT INTO manutencao (
@@ -39,8 +42,7 @@ public class ManutencaoDAO {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  """;
 
-        try (
-                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, manutencao.getIdEquipamento());
             statement.setLong(2, manutencao.getIdUsuario());
@@ -149,7 +151,10 @@ public class ManutencaoDAO {
         return null;
     }
 
-    public void atualizar(ManutencaoDTO manutencao) throws SQLException {
+    public void atualizar(
+            Connection connection,
+            ManutencaoDTO manutencao
+    ) throws SQLException {
 
         String sql = """
                  UPDATE manutencao
@@ -167,8 +172,7 @@ public class ManutencaoDAO {
                  WHERE id_manutencao = ?
                  """;
 
-        try (
-                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, manutencao.getIdEquipamento());
             statement.setLong(2, manutencao.getIdUsuario());

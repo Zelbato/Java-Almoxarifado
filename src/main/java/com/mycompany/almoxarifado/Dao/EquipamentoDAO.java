@@ -226,6 +226,63 @@ public class EquipamentoDAO {
         }
     }
 
+    /**
+     * Retorna o nome da situação atual do equipamento (DISPONIVEL, EMPRESTADO...).
+     * O FOR UPDATE trava a linha até o fim da transação, assim duas pessoas
+     * não conseguem retirar o mesmo equipamento ao mesmo tempo.
+     */
+    public String buscarSituacaoParaAtualizar(
+            Connection connection,
+            Long idEquipamento
+    ) throws SQLException {
+
+        String sql = """
+                 SELECT se.nome
+                 FROM equipamento e
+                 INNER JOIN situacao_equipamento se
+                     ON se.id_situacao_equipamento = e.id_situacao_equipamento
+                 WHERE e.id_equipamento = ?
+                 FOR UPDATE
+                 """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, idEquipamento);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+
+                if (resultSet.next()) {
+                    return resultSet.getString("nome");
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public void alterarSituacao(
+            Connection connection,
+            Long idEquipamento,
+            String nomeSituacao
+    ) throws SQLException {
+
+        String sql = """
+                 UPDATE equipamento
+                 SET id_situacao_equipamento = (
+                     SELECT id_situacao_equipamento FROM situacao_equipamento
+                     WHERE nome = ?
+                 )
+                 WHERE id_equipamento = ?
+                 """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, nomeSituacao);
+            statement.setLong(2, idEquipamento);
+            statement.executeUpdate();
+        }
+    }
+
     public boolean existePorNumeroPatrimonio(
             String numeroPatrimonio
     ) throws SQLException {

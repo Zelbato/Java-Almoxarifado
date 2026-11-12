@@ -31,10 +31,16 @@ public class EquipamentoService {
     }
 
     public void cadastrar(EquipamentoDTO equipamento) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
 
         validar(equipamento);
         validarRelacionamentos(equipamento);
+
+        if (situacaoControladaPeloSistema(equipamento.getIdSituacaoEquipamento())) {
+            throw new IllegalArgumentException(
+                    "Um equipamento novo não pode ser cadastrado como EMPRESTADO ou EM_MANUTENCAO."
+            );
+        }
 
         if (equipamento.getNumeroPatrimonio() != null
                 && !equipamento.getNumeroPatrimonio().isBlank()
@@ -51,10 +57,12 @@ public class EquipamentoService {
     }
 
     public List<EquipamentoDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
         return equipamentoDAO.listarTodos();
     }
 
     public EquipamentoDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
 
         validarId(id);
 
@@ -70,7 +78,7 @@ public class EquipamentoService {
     }
 
     public void atualizar(EquipamentoDTO equipamento) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
 
         if (equipamento == null) {
             throw new IllegalArgumentException(
@@ -91,6 +99,20 @@ public class EquipamentoService {
             );
         }
 
+        // EMPRESTADO e EM_MANUTENCAO só mudam pelas telas de movimentação
+        // e manutenção, senão o equipamento fica diferente do histórico
+        boolean mudouSituacao = !equipamentoExistente.getIdSituacaoEquipamento()
+                .equals(equipamento.getIdSituacaoEquipamento());
+
+        if (mudouSituacao
+                && (situacaoControladaPeloSistema(equipamentoExistente.getIdSituacaoEquipamento())
+                || situacaoControladaPeloSistema(equipamento.getIdSituacaoEquipamento()))) {
+            throw new IllegalArgumentException(
+                    "As situações EMPRESTADO e EM_MANUTENCAO são alteradas "
+                    + "pelas movimentações e manutenções, não pelo cadastro."
+            );
+        }
+
         if (equipamento.getNumeroPatrimonio() != null
                 && !equipamento.getNumeroPatrimonio().isBlank()
                 && equipamentoDAO.existePorNumeroPatrimonioDiferenteDoId(
@@ -107,7 +129,7 @@ public class EquipamentoService {
     }
 
     public void excluir(Long id) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
 
         validarId(id);
 
@@ -120,6 +142,17 @@ public class EquipamentoService {
         }
 
         equipamentoDAO.excluir(id);
+    }
+
+    private boolean situacaoControladaPeloSistema(Long idSituacao) throws SQLException {
+        var situacao = situacaoEquipamentoDAO.buscarPorId(idSituacao);
+
+        if (situacao == null) {
+            return false;
+        }
+
+        return situacao.getNome().equals("EMPRESTADO")
+                || situacao.getNome().equals("EM_MANUTENCAO");
     }
 
     private void validar(EquipamentoDTO equipamento) {

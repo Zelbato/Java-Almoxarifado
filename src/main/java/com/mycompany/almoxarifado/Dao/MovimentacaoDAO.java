@@ -20,7 +20,12 @@ import java.util.List;
  */
 public class MovimentacaoDAO {
 
-    public void cadastrar(MovimentacaoDTO movimentacao) throws SQLException {
+    // Recebe a conexão de fora porque a retirada roda na mesma transação
+    // que muda a situação do equipamento (ver MovimentacaoService).
+    public void cadastrar(
+            Connection connection,
+            MovimentacaoDTO movimentacao
+    ) throws SQLException {
 
         String sql = """
                  INSERT INTO movimentacao (
@@ -39,8 +44,7 @@ public class MovimentacaoDAO {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                  """;
 
-        try (
-                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, movimentacao.getIdEquipamento());
             statement.setLong(2, movimentacao.getIdFuncionario());
@@ -150,7 +154,10 @@ public class MovimentacaoDAO {
         return null;
     }
 
-    public void atualizar(MovimentacaoDTO movimentacao) throws SQLException {
+    public void atualizar(
+            Connection connection,
+            MovimentacaoDTO movimentacao
+    ) throws SQLException {
 
         String sql = """
                  UPDATE movimentacao
@@ -168,8 +175,7 @@ public class MovimentacaoDAO {
                  WHERE id_movimentacao = ?
                  """;
 
-        try (
-                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
 
             statement.setLong(1, movimentacao.getIdEquipamento());
             statement.setLong(2, movimentacao.getIdFuncionario());
@@ -212,18 +218,46 @@ public class MovimentacaoDAO {
         }
     }
 
-    public void excluir(Long id) throws SQLException {
+    // Não existe excluir: o histórico das retiradas não pode ser apagado.
+    // Para anular uma retirada o status vira CANCELADA.
 
-        String sql = """
-                 DELETE FROM movimentacao
-                 WHERE id_movimentacao = ?
+    /**
+     * Acerta o status pelo prazo: EM_ABERTO vencida vira ATRASADA e,
+     * se o prazo foi prorrogado, ATRASADA volta para EM_ABERTO.
+     */
+    public void atualizarAtrasadas() throws SQLException {
+
+        String sqlAtrasar = """
+                 UPDATE movimentacao
+                 SET id_status_movimentacao = (
+                     SELECT id_status_movimentacao FROM status_movimentacao
+                     WHERE nome = 'ATRASADA'
+                 )
+                 WHERE id_status_movimentacao = (
+                     SELECT id_status_movimentacao FROM status_movimentacao
+                     WHERE nome = 'EM_ABERTO'
+                 )
+                 AND data_prevista_devolucao < NOW()
+                 """;
+
+        String sqlReabrir = """
+                 UPDATE movimentacao
+                 SET id_status_movimentacao = (
+                     SELECT id_status_movimentacao FROM status_movimentacao
+                     WHERE nome = 'EM_ABERTO'
+                 )
+                 WHERE id_status_movimentacao = (
+                     SELECT id_status_movimentacao FROM status_movimentacao
+                     WHERE nome = 'ATRASADA'
+                 )
+                 AND data_prevista_devolucao >= NOW()
                  """;
 
         try (
-                Connection connection = DatabaseConnection.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+                Connection connection = DatabaseConnection.getConnection(); PreparedStatement atrasar = connection.prepareStatement(sqlAtrasar); PreparedStatement reabrir = connection.prepareStatement(sqlReabrir)) {
 
-            statement.setLong(1, id);
-            statement.executeUpdate();
+            atrasar.executeUpdate();
+            reabrir.executeUpdate();
         }
     }
 

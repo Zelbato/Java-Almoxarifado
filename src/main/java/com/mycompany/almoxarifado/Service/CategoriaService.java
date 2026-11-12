@@ -23,7 +23,7 @@ public class CategoriaService {
     }
 
     public void cadastrar(CategoriaDTO categoria) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
         validar(categoria);
 
         if (categoriaDAO.existePorNome(categoria.getNome())) {
@@ -34,10 +34,12 @@ public class CategoriaService {
     }
 
     public List<CategoriaDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
         return categoriaDAO.listarTodos();
     }
 
     public CategoriaDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
         validarId(id);
 
         CategoriaDTO categoria = categoriaDAO.buscarPorId(id);
@@ -50,7 +52,7 @@ public class CategoriaService {
     }
 
     public void atualizar(CategoriaDTO categoria) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
         if (categoria == null) {
             throw new IllegalArgumentException("Categoria não informada.");
         }
@@ -78,7 +80,7 @@ public class CategoriaService {
     }
 
     public void excluir(Long id) throws SQLException {
-        AuthSession.exigirEscrita();
+        AuthSession.exigirChefe();
         validarId(id);
 
         CategoriaDTO categoria = categoriaDAO.buscarPorId(id);

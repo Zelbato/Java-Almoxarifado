@@ -3,10 +3,13 @@ package com.mycompany.almoxarifado.Service;
 import com.mycompany.almoxarifado.Dao.EquipamentoDAO;
 import com.mycompany.almoxarifado.Dao.FuncionarioDAO;
 import com.mycompany.almoxarifado.Dao.MovimentacaoDAO;
+import com.mycompany.almoxarifado.Dao.OcorrenciaDAO;
 import com.mycompany.almoxarifado.Dao.StatusMovimentacaoDAO;
 import com.mycompany.almoxarifado.Dao.UsuarioDAO;
 import com.mycompany.almoxarifado.Dto.MovimentacaoDTO;
+import com.mycompany.almoxarifado.config.DatabaseConnection;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -21,6 +24,7 @@ public class MovimentacaoService {
     private final FuncionarioDAO funcionarioDAO;
     private final UsuarioDAO usuarioDAO;
     private final StatusMovimentacaoDAO statusMovimentacaoDAO;
+    private final OcorrenciaDAO ocorrenciaDAO;
 
     public MovimentacaoService() {
         this.movimentacaoDAO = new MovimentacaoDAO();
@@ -28,22 +32,68 @@ public class MovimentacaoService {
         this.funcionarioDAO = new FuncionarioDAO();
         this.usuarioDAO = new UsuarioDAO();
         this.statusMovimentacaoDAO = new StatusMovimentacaoDAO();
+        this.ocorrenciaDAO = new OcorrenciaDAO();
     }
 
     public void cadastrar(MovimentacaoDTO movimentacao) throws SQLException {
         AuthSession.exigirEscrita();
 
         validar(movimentacao);
-        validarRelacionamentos(movimentacao);
+        String status = validarRelacionamentos(movimentacao);
 
-        movimentacaoDAO.cadastrar(movimentacao);
+        if (!status.equals("EM_ABERTO") && !status.equals("ATRASADA")) {
+            throw new IllegalArgumentException(
+                    "Uma nova retirada deve ser registrada com status EM_ABERTO."
+            );
+        }
+
+        if (!equipamentoDAO.buscarPorId(movimentacao.getIdEquipamento()).isAtivo()) {
+            throw new IllegalArgumentException(
+                    "Equipamento inativo não pode ser retirado."
+            );
+        }
+
+        // retirada + equipamento EMPRESTADO precisam acontecer juntos,
+        // se um falhar o outro é desfeito
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                String situacao = equipamentoDAO.buscarSituacaoParaAtualizar(
+                        connection,
+                        movimentacao.getIdEquipamento()
+                );
+
+                if (!"DISPONIVEL".equals(situacao)) {
+                    throw new IllegalArgumentException(
+                            "O equipamento não está disponível para retirada. "
+                            + "Situação atual: " + situacao + "."
+                    );
+                }
+
+                movimentacaoDAO.cadastrar(connection, movimentacao);
+                equipamentoDAO.alterarSituacao(
+                        connection,
+                        movimentacao.getIdEquipamento(),
+                        "EMPRESTADO"
+                );
+
+                connection.commit();
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
     }
 
     public List<MovimentacaoDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
+        movimentacaoDAO.atualizarAtrasadas();
         return movimentacaoDAO.listarTodos();
     }
 
     public MovimentacaoDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
         validarId(id);
 
         MovimentacaoDTO movimentacao = movimentacaoDAO.buscarPorId(id);
@@ -68,7 +118,7 @@ public class MovimentacaoService {
 
         validarId(movimentacao.getIdMovimentacao());
         validar(movimentacao);
-        validarRelacionamentos(movimentacao);
+        String statusNovo = validarRelacionamentos(movimentacao);
 
         MovimentacaoDTO movimentacaoExistente =
                 movimentacaoDAO.buscarPorId(
@@ -81,24 +131,77 @@ public class MovimentacaoService {
             );
         }
 
-        movimentacaoDAO.atualizar(movimentacao);
+        String statusAnterior = statusMovimentacaoDAO
+                .buscarPorId(movimentacaoExistente.getIdStatusMovimentacao())
+                .getNome();
+
+        if (statusAnterior.equals("DEVOLVIDA")
+                || statusAnterior.equals("CANCELADA")) {
+            throw new IllegalArgumentException(
+                    "Esta movimentação já foi encerrada e não pode mais ser alterada."
+            );
+        }
+
+        if (!movimentacaoExistente.getIdEquipamento()
+                .equals(movimentacao.getIdEquipamento())) {
+            throw new IllegalArgumentException(
+                    "Não é possível trocar o equipamento de uma retirada. "
+                    + "Cancele esta movimentação e registre uma nova."
+            );
+        }
+
+        boolean encerrando = statusNovo.equals("DEVOLVIDA")
+                || statusNovo.equals("CANCELADA");
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try {
+                String situacao = equipamentoDAO.buscarSituacaoParaAtualizar(
+                        connection,
+                        movimentacao.getIdEquipamento()
+                );
+
+                movimentacaoDAO.atualizar(connection, movimentacao);
+
+                // só mexe no equipamento se ele ainda está como EMPRESTADO,
+                // pra não sobrescrever uma situação colocada pelo chefe
+                if (encerrando && "EMPRESTADO".equals(situacao)) {
+                    String situacaoFinal = "DISPONIVEL";
+
+                    if (statusNovo.equals("DEVOLVIDA")
+                            && ocorrenciaDAO.existeDanoAbertoNaMovimentacao(
+                                    connection,
+                                    movimentacao.getIdMovimentacao()
+                            )) {
+                        situacaoFinal = "DANIFICADO";
+                    }
+
+                    equipamentoDAO.alterarSituacao(
+                            connection,
+                            movimentacao.getIdEquipamento(),
+                            situacaoFinal
+                    );
+                }
+
+                connection.commit();
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
     }
 
     public void excluir(Long id) throws SQLException {
         AuthSession.exigirEscrita();
 
-        validarId(id);
+        buscarPorId(id);
 
-        MovimentacaoDTO movimentacao =
-                movimentacaoDAO.buscarPorId(id);
-
-        if (movimentacao == null) {
-            throw new IllegalArgumentException(
-                    "Movimentação não encontrada."
-            );
-        }
-
-        movimentacaoDAO.excluir(id);
+        // o histórico da retirada nunca é apagado
+        throw new IllegalArgumentException(
+                "Movimentações não podem ser excluídas para manter o histórico. "
+                + "Para anular a retirada, altere o status para CANCELADA."
+        );
     }
 
     private void validar(MovimentacaoDTO movimentacao) {
@@ -200,7 +303,8 @@ public class MovimentacaoService {
         }
     }
 
-    private void validarRelacionamentos(
+    // devolve o nome do status escolhido, usado no cadastrar/atualizar
+    private String validarRelacionamentos(
             MovimentacaoDTO movimentacao
     ) throws SQLException {
         if (equipamentoDAO.buscarPorId(
@@ -247,6 +351,8 @@ public class MovimentacaoService {
                     "Usuário responsável pela devolução não encontrado."
             );
         }
+
+        return status.getNome().trim().toUpperCase();
     }
 
     private void validarDevolucaoPorStatus(

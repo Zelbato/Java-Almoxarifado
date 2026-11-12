@@ -2,6 +2,7 @@ C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompa
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\config\DatabaseConnection.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\config\MigrationConfig.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\CategoriaDAO.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\DashboardDAO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\EquipamentoDAO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\EstadoConservacaoDAO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\FuncionarioDAO.java
@@ -19,6 +20,7 @@ C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompa
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\TipoUsuarioDAO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dao\UsuarioDAO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dto\CategoriaDTO.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dto\DashboardDTO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dto\EquipamentoDTO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dto\EstadoConservacaoDTO.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Dto\FuncionarioDTO.java
@@ -39,6 +41,7 @@ C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompa
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\AutenticacaoService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\AuthSession.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\CategoriaService.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\DashboardService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\EquipamentoService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\EstadoConservacaoService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\FuncionarioService.java
@@ -46,6 +49,7 @@ C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompa
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\ManutencaoService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\MovimentacaoService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\OcorrenciaService.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\RelatorioPdfService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\SetorService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\SituacaoEquipamentoService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\StatusManutencaoService.java
@@ -55,17 +59,21 @@ C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompa
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\TipoOcorrenciaService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\TipoUsuarioService.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\Service\UsuarioService.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\BarChartPanel.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\ButtonRenderer.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\CategoriaView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\ComboItem.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\DashboardView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\EquipamentoView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\FuncionarioView.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\LineChartPanel.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\LocalizacaoView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\LoginView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\MainView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\ManutencaoView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\MovimentacaoView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\OcorrenciaView.java
+C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\RelatorioView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\SetorView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\UsuarioView.java
 C:\Users\heito\Documents\NetBeansProjects\almoxarifado\src\main\java\com\mycompany\almoxarifado\View\ViewInputSupport.java

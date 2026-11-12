@@ -5,35 +5,21 @@ import com.mycompany.almoxarifado.Dto.SetorDTO;
 import com.mycompany.almoxarifado.Service.FuncionarioService;
 import com.mycompany.almoxarifado.Service.AuthSession;
 import com.mycompany.almoxarifado.Service.SetorService;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.sql.SQLException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
-import javax.swing.JComboBox;
-import com.toedter.calendar.JDateChooser;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 
 /** Formulário JFrame do NetBeans para funcionários. */
 public class FuncionarioView extends javax.swing.JFrame {
+
     private final FuncionarioService service = new FuncionarioService();
-    private final Map<String, JTextField> campos = new LinkedHashMap<>();
     private Long idSelecionado;
-    private JComboBox<ComboItem> cmbSetor;
-    private JDateChooser calDataAdmissao, calDataDemissao;
 
     public FuncionarioView() {
         AuthSession.exigirAutenticacao();
         initComponents();
-        montarCampos();
-        configurarSelects();
-        configurarDatas();
-        ajustarLayoutFormulario();
-        ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir);
+        carregarSetores();
         configurarEventos();
         aplicarPermissoes();
         limparFormulario();
@@ -41,36 +27,152 @@ public class FuncionarioView extends javax.swing.JFrame {
     }
 
     private void configurarEventos() {
-        btnNovo.addActionListener(e -> limparFormulario()); btnSalvar.addActionListener(e -> cadastrar()); btnEditar.addActionListener(e -> editar()); btnExcluir.addActionListener(e -> excluir());
+        btnNovo.addActionListener(e -> limparFormulario());
+        btnSalvar.addActionListener(e -> cadastrar());
+        btnEditar.addActionListener(e -> editar());
+        btnExcluir.addActionListener(e -> excluir());
         tblDados.getSelectionModel().addListSelectionListener(this::selecionarLinha);
     }
-    private void aplicarPermissoes() { boolean permitido = AuthSession.podeEscrever(); btnNovo.setEnabled(permitido); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
-    private FuncionarioDTO lerFormulario() { FuncionarioDTO dto = new FuncionarioDTO(); dto.setIdSetor(ViewInputSupport.id(cmbSetor, "O setor", true)); dto.setNome(ViewInputSupport.texto(campos.get("Nome"))); dto.setCpf(ViewInputSupport.texto(campos.get("CPF"))); dto.setTelefone(ViewInputSupport.texto(campos.get("Telefone"))); dto.setEmail(ViewInputSupport.texto(campos.get("E-mail"))); dto.setDataAdmissao(ViewInputSupport.data(calDataAdmissao, "A data de admissão", false)); dto.setDataDemissao(ViewInputSupport.data(calDataDemissao, "A data de demissão", false)); return dto; }
-    private void cadastrar() { try { service.cadastrar(lerFormulario()); sucesso("Funcionário cadastrada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
-    private void editar() { if (idSelecionado == null) { aviso("Selecione o funcionário para editar."); return; } try { FuncionarioDTO dto = lerFormulario(); dto.setIdFuncionario(idSelecionado); service.atualizar(dto); sucesso("Funcionário atualizada com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
-    private void excluir() { if (idSelecionado == null) { aviso("Selecione o funcionário para excluir."); return; } if (JOptionPane.showConfirmDialog(this, "Deseja excluir o funcionário selecionada?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return; try { service.excluir(idSelecionado); sucesso("Funcionário excluída com sucesso."); } catch (IllegalArgumentException | SQLException ex) { erro(ex); } }
-    private void carregarDados() { try { DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel(); modelo.setRowCount(0); for (FuncionarioDTO dto : service.listarTodos()) modelo.addRow(new Object[]{dto.getIdFuncionario(), dto.getIdSetor(), dto.getNome(), dto.getCpf(), dto.getTelefone(), dto.getEmail(), dto.getDataAdmissao(), dto.getDataDemissao()}); } catch (SQLException ex) { erro(ex); } }
-    private void selecionarLinha(ListSelectionEvent evento) { if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) return; int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow()); Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString()); try { preencher(service.buscarPorId(id)); idSelecionado = id; btnSalvar.setEnabled(false); boolean permitido = AuthSession.podeEscrever(); btnEditar.setEnabled(permitido); btnExcluir.setEnabled(permitido); } catch (SQLException | IllegalArgumentException ex) { erro(ex); } }
-    private void preencher(FuncionarioDTO dto) { ViewInputSupport.selecionar(cmbSetor, dto.getIdSetor()); preencher("Nome", dto.getNome()); preencher("CPF", dto.getCpf()); preencher("Telefone", dto.getTelefone()); preencher("E-mail", dto.getEmail()); ViewInputSupport.selecionar(calDataAdmissao, dto.getDataAdmissao()); ViewInputSupport.selecionar(calDataDemissao, dto.getDataDemissao()); }
-    private void preencher(String campo, Object valor) { ViewInputSupport.preencher(campos.get(campo), valor); }
-    private void limparFormulario() { idSelecionado = null; campos.values().forEach(c -> c.setText("")); ViewInputSupport.selecionar(cmbSetor, null); ViewInputSupport.selecionar(calDataAdmissao, null); ViewInputSupport.selecionar(calDataDemissao, null); tblDados.clearSelection(); boolean permitido = AuthSession.podeEscrever(); btnSalvar.setEnabled(permitido); btnEditar.setEnabled(false); btnExcluir.setEnabled(false); }
-    private void sucesso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem); limparFormulario(); carregarDados(); }
-    private void aviso(String mensagem) { JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE); }
-    private void erro(Exception ex) { JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE); }
 
-    private void montarCampos() {
-        campos.put("Setor ID", txtCampo1);
-        campos.put("Nome", txtCampo2);
-        campos.put("CPF", txtCampo3);
-        campos.put("Telefone", txtCampo4);
-        campos.put("E-mail", txtCampo5);
-        campos.put("Data de admissão", txtCampo6);
-        campos.put("Data de demissão", txtCampo7);
+    // cadastro de funcionário é só do Chefe
+    private void aplicarPermissoes() {
+        boolean permitido = AuthSession.ehChefe();
+        btnNovo.setVisible(permitido);
+        btnSalvar.setVisible(permitido);
+        btnEditar.setVisible(permitido);
+        btnExcluir.setVisible(permitido);
     }
 
-    private void configurarSelects() {
-        cmbSetor = new JComboBox<>();
-        ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo1, cmbSetor);
+    private FuncionarioDTO lerFormulario() {
+        FuncionarioDTO dto = new FuncionarioDTO();
+        dto.setIdSetor(ViewInputSupport.id(cmbSetor, "O setor", true));
+        dto.setNome(ViewInputSupport.texto(txtNome));
+        dto.setCpf(ViewInputSupport.texto(txtCpf));
+        dto.setTelefone(ViewInputSupport.texto(txtTelefone));
+        dto.setEmail(ViewInputSupport.texto(txtEmail));
+        dto.setDataAdmissao(ViewInputSupport.data(calDataAdmissao, "A data de admissão", false));
+        dto.setDataDemissao(ViewInputSupport.data(calDataDemissao, "A data de demissão", false));
+        return dto;
+    }
+
+    private void cadastrar() {
+        try {
+            service.cadastrar(lerFormulario());
+            sucesso("Funcionário cadastrado com sucesso.");
+        } catch (IllegalArgumentException | SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void editar() {
+        if (idSelecionado == null) {
+            aviso("Selecione o funcionário para editar.");
+            return;
+        }
+        try {
+            FuncionarioDTO dto = lerFormulario();
+            dto.setIdFuncionario(idSelecionado);
+            service.atualizar(dto);
+            sucesso("Funcionário atualizado com sucesso.");
+        } catch (IllegalArgumentException | SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void excluir() {
+        if (idSelecionado == null) {
+            aviso("Selecione o funcionário para excluir.");
+            return;
+        }
+        if (JOptionPane.showConfirmDialog(this, "Deseja excluir o funcionário selecionado?", "Confirmação", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            service.excluir(idSelecionado);
+            sucesso("Funcionário excluído com sucesso.");
+        } catch (IllegalArgumentException | SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void carregarDados() {
+        try {
+            DefaultTableModel modelo = (DefaultTableModel) tblDados.getModel();
+            modelo.setRowCount(0);
+            for (FuncionarioDTO dto : service.listarTodos()) {
+                modelo.addRow(new Object[]{
+                    dto.getIdFuncionario(),
+                    ViewInputSupport.nomeDoItem(cmbSetor, dto.getIdSetor()),
+                    dto.getNome(),
+                    dto.getCpf(),
+                    dto.getTelefone(),
+                    dto.getEmail(),
+                    ViewInputSupport.formatar(dto.getDataAdmissao()),
+                    ViewInputSupport.formatar(dto.getDataDemissao())
+                });
+            }
+        } catch (SQLException ex) {
+            erro(ex);
+        }
+    }
+
+    private void selecionarLinha(ListSelectionEvent evento) {
+        if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) {
+            return;
+        }
+        int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow());
+        Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString());
+        try {
+            preencher(service.buscarPorId(id));
+            idSelecionado = id;
+            btnSalvar.setEnabled(false);
+            btnEditar.setEnabled(true);
+            btnExcluir.setEnabled(true);
+        } catch (SQLException | IllegalArgumentException ex) {
+            erro(ex);
+        }
+    }
+
+    private void preencher(FuncionarioDTO dto) {
+        ViewInputSupport.selecionar(cmbSetor, dto.getIdSetor());
+        ViewInputSupport.preencher(txtNome, dto.getNome());
+        ViewInputSupport.preencher(txtCpf, dto.getCpf());
+        ViewInputSupport.preencher(txtTelefone, dto.getTelefone());
+        ViewInputSupport.preencher(txtEmail, dto.getEmail());
+        ViewInputSupport.selecionar(calDataAdmissao, dto.getDataAdmissao());
+        ViewInputSupport.selecionar(calDataDemissao, dto.getDataDemissao());
+    }
+
+    private void limparFormulario() {
+        idSelecionado = null;
+        txtNome.setText("");
+        txtCpf.setText("");
+        txtTelefone.setText("");
+        txtEmail.setText("");
+        ViewInputSupport.selecionar(cmbSetor, null);
+        ViewInputSupport.selecionar(calDataAdmissao, null);
+        ViewInputSupport.selecionar(calDataDemissao, null);
+        tblDados.clearSelection();
+        btnSalvar.setEnabled(true);
+        btnEditar.setEnabled(false);
+        btnExcluir.setEnabled(false);
+    }
+
+    private void sucesso(String mensagem) {
+        JOptionPane.showMessageDialog(this, mensagem);
+        limparFormulario();
+        carregarDados();
+    }
+
+    private void aviso(String mensagem) {
+        JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void erro(Exception ex) {
+        JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void carregarSetores() {
         try {
             for (SetorDTO setor : new SetorService().listarTodos()) {
                 cmbSetor.addItem(new ComboItem(setor.getIdSetor(), setor.getNome()));
@@ -81,157 +183,272 @@ public class FuncionarioView extends javax.swing.JFrame {
         }
     }
 
-    private void configurarDatas() {
-        calDataAdmissao = new JDateChooser();
-        calDataDemissao = new JDateChooser();
-        calDataAdmissao.setDateFormatString("dd/MM/yyyy");
-        calDataDemissao.setDateFormatString("dd/MM/yyyy");
-        ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo6, calDataAdmissao);
-        ViewInputSupport.substituirNoPainel(pnlCampos, txtCampo7, calDataDemissao);
-    }
-
-    private void ajustarLayoutFormulario() {
-        scrollCampos.setViewportView(null);
-
-        pnlCampos.setLayout(new java.awt.GridLayout(0, 4, 16, 12));
-        pnlCampos.setBackground(java.awt.Color.WHITE);
-        pnlCampos.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
-
-        for (java.awt.Component componente : pnlCampos.getComponents()) {
-            if (componente instanceof JTextField
-                    || componente instanceof JComboBox
-                    || componente instanceof JDateChooser) {
-                componente.setPreferredSize(new Dimension(200, 32));
-            }
-        }
-
-        javax.swing.JPanel pnlAcoes = new javax.swing.JPanel(
-                new FlowLayout(FlowLayout.RIGHT, 12, 0)
-        );
-        pnlAcoes.setOpaque(false);
-        pnlAcoes.add(btnNovo);
-        pnlAcoes.add(btnSalvar);
-        pnlAcoes.add(btnEditar);
-        pnlAcoes.add(btnExcluir);
-
-        pnlFormulario.removeAll();
-        pnlFormulario.setLayout(new BorderLayout(0, 14));
-        pnlFormulario.add(pnlCampos, BorderLayout.CENTER);
-        pnlFormulario.add(pnlAcoes, BorderLayout.SOUTH);
-        pnlFormulario.setPreferredSize(new Dimension(950, 240));
-
-        pnlPesquisa.removeAll();
-        pnlPesquisa.setLayout(new BorderLayout(16, 0));
-        pnlPesquisa.setBorder(
-                javax.swing.BorderFactory.createCompoundBorder(
-                        javax.swing.BorderFactory.createLineBorder(
-                                new java.awt.Color(179, 179, 179)
-                        ),
-                        javax.swing.BorderFactory.createEmptyBorder(14, 16, 14, 16)
-                )
-        );
-        pnlPesquisa.add(lblBuscar, BorderLayout.WEST);
-        pnlPesquisa.add(txtBuscar, BorderLayout.CENTER);
-
-        tblDados.setRowHeight(26);
-        tblDados.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        tblDados.getTableHeader().setReorderingAllowed(false);
-
-        jPanel1.setPreferredSize(new Dimension(1000, 760));
-        setMinimumSize(new Dimension(1030, 790));
-
-        pnlFormulario.revalidate();
-        pnlFormulario.repaint();
-        pnlPesquisa.revalidate();
-        pnlPesquisa.repaint();
-    }
+    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-        jPanel1 = new javax.swing.JPanel();
-        pnlFormulario = new javax.swing.JPanel();
-        pnlCampos = new javax.swing.JPanel();
-        lblCampo1 = new javax.swing.JLabel();
-        txtCampo1 = new javax.swing.JTextField();
-        lblCampo2 = new javax.swing.JLabel();
-        txtCampo2 = new javax.swing.JTextField();
-        lblCampo3 = new javax.swing.JLabel();
-        txtCampo3 = new javax.swing.JTextField();
-        lblCampo4 = new javax.swing.JLabel();
-        txtCampo4 = new javax.swing.JTextField();
-        lblCampo5 = new javax.swing.JLabel();
-        txtCampo5 = new javax.swing.JTextField();
-        lblCampo6 = new javax.swing.JLabel();
-        txtCampo6 = new javax.swing.JTextField();
-        lblCampo7 = new javax.swing.JLabel();
-        txtCampo7 = new javax.swing.JTextField();
-        scrollCampos = new javax.swing.JScrollPane();
-        pnlPesquisa = new javax.swing.JPanel();
+
+        pnlPrincipal = new javax.swing.JPanel();
         lblTituloFormulario = new javax.swing.JLabel();
-        lblTituloPesquisa = new javax.swing.JLabel();
-        lblTituloLista = new javax.swing.JLabel();
-        lblBuscar = new javax.swing.JLabel();
-        txtBuscar = new javax.swing.JTextField();
+        pnlFormulario = new javax.swing.JPanel();
+        lblSetor = new javax.swing.JLabel();
+        cmbSetor = new javax.swing.JComboBox<>();
+        lblNome = new javax.swing.JLabel();
+        txtNome = new javax.swing.JTextField();
+        lblCpf = new javax.swing.JLabel();
+        txtCpf = new javax.swing.JTextField();
+        lblTelefone = new javax.swing.JLabel();
+        txtTelefone = new javax.swing.JTextField();
+        lblEmail = new javax.swing.JLabel();
+        txtEmail = new javax.swing.JTextField();
+        lblDataAdmissao = new javax.swing.JLabel();
+        calDataAdmissao = new com.toedter.calendar.JDateChooser();
+        lblDataDemissao = new javax.swing.JLabel();
+        calDataDemissao = new com.toedter.calendar.JDateChooser();
         btnNovo = new javax.swing.JButton();
         btnSalvar = new javax.swing.JButton();
         btnEditar = new javax.swing.JButton();
         btnExcluir = new javax.swing.JButton();
+        lblTituloPesquisa = new javax.swing.JLabel();
+        pnlPesquisa = new javax.swing.JPanel();
+        lblBuscar = new javax.swing.JLabel();
+        txtBuscar = new javax.swing.JTextField();
+        lblTituloLista = new javax.swing.JLabel();
         scrollDados = new javax.swing.JScrollPane();
         tblDados = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Almoxarifado - Funcionários");
-        getContentPane().setBackground(new java.awt.Color(248, 249, 250));
+        setMinimumSize(new java.awt.Dimension(1000, 720));
 
-        jPanel1.setBackground(new java.awt.Color(248, 249, 250));
-        jPanel1.setPreferredSize(new java.awt.Dimension(719, 600));
-        pnlFormulario.setBackground(java.awt.Color.WHITE);
+        pnlPrincipal.setBackground(new java.awt.Color(248, 249, 250));
+        lblTituloFormulario.setText("Cadastro / Edição de Funcionário");
+        lblTituloFormulario.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTituloFormulario.setForeground(new java.awt.Color(0, 78, 174));
+
+        pnlFormulario.setBackground(new java.awt.Color(255, 255, 255));
         pnlFormulario.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
-        pnlPesquisa.setBackground(java.awt.Color.WHITE);
-        pnlPesquisa.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(179, 179, 179)));
+        lblSetor.setText("Setor:");
+        lblSetor.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
-        java.awt.Font tituloFont = new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 12);
-        lblTituloFormulario.setFont(tituloFont); lblTituloFormulario.setForeground(new java.awt.Color(0, 78, 174)); lblTituloFormulario.setText("Cadastro / Edição de Funcionário");
-        lblTituloPesquisa.setFont(tituloFont); lblTituloPesquisa.setForeground(new java.awt.Color(0, 78, 174)); lblTituloPesquisa.setText("Pesquisa");
-        lblTituloLista.setFont(tituloFont); lblTituloLista.setForeground(new java.awt.Color(0, 78, 174)); lblTituloLista.setText("Lista de Funcionários");
-        lblBuscar.setFont(tituloFont); lblBuscar.setText("Buscar:");
-        txtBuscar.setText("Digite para buscar...");
-        pnlCampos.setLayout(new java.awt.GridLayout(0, 2, 12, 10));
-        lblCampo1.setFont(tituloFont); lblCampo1.setText("Setor:"); pnlCampos.add(lblCampo1); pnlCampos.add(txtCampo1);
-        lblCampo2.setFont(tituloFont); lblCampo2.setText("Nome:"); pnlCampos.add(lblCampo2); pnlCampos.add(txtCampo2);
-        lblCampo3.setFont(tituloFont); lblCampo3.setText("CPF:"); pnlCampos.add(lblCampo3); pnlCampos.add(txtCampo3);
-        lblCampo4.setFont(tituloFont); lblCampo4.setText("Telefone:"); pnlCampos.add(lblCampo4); pnlCampos.add(txtCampo4);
-        lblCampo5.setFont(tituloFont); lblCampo5.setText("E-mail:"); pnlCampos.add(lblCampo5); pnlCampos.add(txtCampo5);
-        lblCampo6.setFont(tituloFont); lblCampo6.setText("Data de admissão:"); pnlCampos.add(lblCampo6); pnlCampos.add(txtCampo6);
-        lblCampo7.setFont(tituloFont); lblCampo7.setText("Data de demissão:"); pnlCampos.add(lblCampo7); pnlCampos.add(txtCampo7);
-        scrollCampos.setViewportView(pnlCampos);
+        lblNome.setText("Nome:");
+        lblNome.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
-        btnNovo.setBackground(new java.awt.Color(0, 78, 174)); btnNovo.setFont(tituloFont); btnNovo.setForeground(java.awt.Color.WHITE); btnNovo.setText("+ Novo"); btnNovo.setPreferredSize(new java.awt.Dimension(86, 38));
-        btnSalvar.setBackground(new java.awt.Color(53, 158, 77)); btnSalvar.setFont(tituloFont); btnSalvar.setForeground(java.awt.Color.WHITE); btnSalvar.setText("Salvar"); btnSalvar.setPreferredSize(new java.awt.Dimension(87, 38));
-        btnEditar.setBackground(new java.awt.Color(228, 146, 10)); btnEditar.setFont(tituloFont); btnEditar.setForeground(java.awt.Color.WHITE); btnEditar.setText("Editar"); btnEditar.setPreferredSize(new java.awt.Dimension(95, 38));
-        btnExcluir.setBackground(new java.awt.Color(214, 62, 50)); btnExcluir.setFont(tituloFont); btnExcluir.setForeground(java.awt.Color.WHITE); btnExcluir.setText("Excluir"); btnExcluir.setPreferredSize(new java.awt.Dimension(96, 38));
+        lblCpf.setText("CPF:");
+        lblCpf.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
-        tblDados.setModel(new DefaultTableModel(new Object[][] {}, new String[] {"ID", "Setor", "Nome", "CPF", "Telefone", "E-mail", "Admissão", "Demissão"}) { public boolean isCellEditable(int row, int column) { return false; } });
+        lblTelefone.setText("Telefone:");
+        lblTelefone.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblEmail.setText("E-mail:");
+        lblEmail.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblDataAdmissao.setText("Data de admissão:");
+        lblDataAdmissao.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        calDataAdmissao.setDateFormatString("dd/MM/yyyy");
+
+        lblDataDemissao.setText("Data de demissão:");
+        lblDataDemissao.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        calDataDemissao.setDateFormatString("dd/MM/yyyy");
+
+        btnNovo.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnNovo.setText("+ Novo");
+        btnNovo.setBackground(new java.awt.Color(0, 78, 174));
+        btnNovo.setForeground(new java.awt.Color(255, 255, 255));
+        btnNovo.setFocusPainted(false);
+
+        btnSalvar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnSalvar.setText("Salvar");
+        btnSalvar.setBackground(new java.awt.Color(53, 158, 77));
+        btnSalvar.setForeground(new java.awt.Color(255, 255, 255));
+        btnSalvar.setFocusPainted(false);
+
+        btnEditar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnEditar.setText("Editar");
+        btnEditar.setBackground(new java.awt.Color(228, 146, 10));
+        btnEditar.setForeground(new java.awt.Color(255, 255, 255));
+        btnEditar.setFocusPainted(false);
+
+        btnExcluir.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        btnExcluir.setText("Excluir");
+        btnExcluir.setBackground(new java.awt.Color(214, 62, 50));
+        btnExcluir.setForeground(new java.awt.Color(255, 255, 255));
+        btnExcluir.setFocusPainted(false);
+
+        javax.swing.GroupLayout pnlFormularioLayout = new javax.swing.GroupLayout(pnlFormulario);
+        pnlFormulario.setLayout(pnlFormularioLayout);
+        pnlFormularioLayout.setHorizontalGroup(
+            pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlFormularioLayout.createSequentialGroup()
+                .addGap(16, 16, 16)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(pnlFormularioLayout.createSequentialGroup()
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(lblSetor, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblEmail, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblDataDemissao, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(cmbSetor, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(txtCpf, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(txtEmail, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(calDataDemissao, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE))
+                        .addGap(24, 24, 24)
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(lblNome, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblDataAdmissao, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(txtNome, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(txtTelefone, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(calDataAdmissao, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)))
+                    .addGroup(pnlFormularioLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(16, 16, 16))
+        );
+        pnlFormularioLayout.setVerticalGroup(
+            pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlFormularioLayout.createSequentialGroup()
+                .addGap(16, 16, 16)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblSetor, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbSetor, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblNome, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtNome, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtCpf, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtTelefone, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblEmail, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtEmail, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblDataAdmissao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(calDataAdmissao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblDataDemissao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(calDataDemissao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGap(8, 8, 8)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(16, 16, 16))
+        );
+
+        lblTituloPesquisa.setText("Pesquisa");
+        lblTituloPesquisa.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTituloPesquisa.setForeground(new java.awt.Color(0, 78, 174));
+
+        pnlPesquisa.setBackground(new java.awt.Color(255, 255, 255));
+        pnlPesquisa.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
+        lblBuscar.setText("Buscar:");
+        lblBuscar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        javax.swing.GroupLayout pnlPesquisaLayout = new javax.swing.GroupLayout(pnlPesquisa);
+        pnlPesquisa.setLayout(pnlPesquisaLayout);
+        pnlPesquisaLayout.setHorizontalGroup(
+            pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPesquisaLayout.createSequentialGroup()
+                .addGap(16, 16, 16)
+                .addComponent(lblBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(10, 10, 10)
+                .addComponent(txtBuscar, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
+                .addGap(16, 16, 16))
+        );
+        pnlPesquisaLayout.setVerticalGroup(
+            pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPesquisaLayout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addGroup(pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(12, 12, 12))
+        );
+
+        lblTituloLista.setText("Lista de Funcionários");
+        lblTituloLista.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTituloLista.setForeground(new java.awt.Color(0, 78, 174));
+
+        tblDados.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "ID", "Setor", "Nome", "CPF", "Telefone", "E-mail", "Admissão", "Demissão"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        tblDados.setRowHeight(26);
+
         scrollDados.setViewportView(tblDados);
 
-        javax.swing.GroupLayout formularioLayout = new javax.swing.GroupLayout(pnlFormulario);
-        pnlFormulario.setLayout(formularioLayout);
-        formularioLayout.setHorizontalGroup(formularioLayout.createSequentialGroup().addGap(14).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addComponent(scrollCampos, 0, 665, Short.MAX_VALUE).addGroup(javax.swing.GroupLayout.Alignment.TRAILING, formularioLayout.createSequentialGroup().addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 95, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(8).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14)));
-        formularioLayout.setVerticalGroup(formularioLayout.createSequentialGroup().addGap(14).addComponent(scrollCampos, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(12).addGroup(formularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(btnExcluir, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14));
-
-        javax.swing.GroupLayout pesquisaLayout = new javax.swing.GroupLayout(pnlPesquisa);
-        pnlPesquisa.setLayout(pesquisaLayout);
-        pesquisaLayout.setHorizontalGroup(pesquisaLayout.createSequentialGroup().addGap(16).addComponent(lblBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 62, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(18).addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 486, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(16));
-        pesquisaLayout.setVerticalGroup(pesquisaLayout.createSequentialGroup().addGap(14).addGroup(pesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(lblBuscar).addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)).addGap(14));
-
-        javax.swing.GroupLayout painelLayout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(painelLayout);
-        painelLayout.setHorizontalGroup(painelLayout.createSequentialGroup().addGap(25).addGroup(painelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addComponent(lblTituloFormulario).addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE).addComponent(lblTituloPesquisa).addComponent(pnlPesquisa, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE).addComponent(lblTituloLista).addComponent(scrollDados, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)).addGap(25));
-        painelLayout.setVerticalGroup(painelLayout.createSequentialGroup().addGap(31).addComponent(lblTituloFormulario).addGap(6).addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(18).addComponent(lblTituloPesquisa).addGap(6).addComponent(pnlPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(20).addComponent(lblTituloLista).addGap(6).addComponent(scrollDados, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE).addGap(20));
+        javax.swing.GroupLayout pnlPrincipalLayout = new javax.swing.GroupLayout(pnlPrincipal);
+        pnlPrincipal.setLayout(pnlPrincipalLayout);
+        pnlPrincipalLayout.setHorizontalGroup(
+            pnlPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPrincipalLayout.createSequentialGroup()
+                .addGap(24, 24, 24)
+                .addGroup(pnlPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(lblTituloFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlFormulario, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lblTituloPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlPesquisa, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lblTituloLista, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(scrollDados, javax.swing.GroupLayout.DEFAULT_SIZE, 900, Short.MAX_VALUE))
+                .addGap(24, 24, 24))
+        );
+        pnlPrincipalLayout.setVerticalGroup(
+            pnlPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPrincipalLayout.createSequentialGroup()
+                .addGap(20, 20, 20)
+                .addComponent(lblTituloFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
+                .addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(16, 16, 16)
+                .addComponent(lblTituloPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
+                .addComponent(pnlPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(16, 16, 16)
+                .addComponent(lblTituloLista, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
+                .addComponent(scrollDados, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
+                .addGap(20, 20, 20))
+        );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(layout.createSequentialGroup().addGap(14).addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE).addGap(15));
-        layout.setVerticalGroup(layout.createSequentialGroup().addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE));
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(pnlPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(pnlPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+        );
+
         pack();
         setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
@@ -243,31 +460,29 @@ public class FuncionarioView extends javax.swing.JFrame {
     private javax.swing.JButton btnExcluir;
     private javax.swing.JButton btnNovo;
     private javax.swing.JButton btnSalvar;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JLabel lblCampo1;
-    private javax.swing.JLabel lblCampo2;
-    private javax.swing.JLabel lblCampo3;
-    private javax.swing.JLabel lblCampo4;
-    private javax.swing.JLabel lblCampo5;
-    private javax.swing.JLabel lblCampo6;
-    private javax.swing.JLabel lblCampo7;
+    private com.toedter.calendar.JDateChooser calDataAdmissao;
+    private com.toedter.calendar.JDateChooser calDataDemissao;
+    private javax.swing.JComboBox<ComboItem> cmbSetor;
     private javax.swing.JLabel lblBuscar;
+    private javax.swing.JLabel lblCpf;
+    private javax.swing.JLabel lblDataAdmissao;
+    private javax.swing.JLabel lblDataDemissao;
+    private javax.swing.JLabel lblEmail;
+    private javax.swing.JLabel lblNome;
+    private javax.swing.JLabel lblSetor;
+    private javax.swing.JLabel lblTelefone;
     private javax.swing.JLabel lblTituloFormulario;
     private javax.swing.JLabel lblTituloLista;
     private javax.swing.JLabel lblTituloPesquisa;
-    private javax.swing.JPanel pnlCampos;
     private javax.swing.JPanel pnlFormulario;
     private javax.swing.JPanel pnlPesquisa;
-    private javax.swing.JScrollPane scrollCampos;
+    private javax.swing.JPanel pnlPrincipal;
     private javax.swing.JScrollPane scrollDados;
     private javax.swing.JTable tblDados;
-    private javax.swing.JTextField txtCampo1;
-    private javax.swing.JTextField txtCampo2;
-    private javax.swing.JTextField txtCampo3;
-    private javax.swing.JTextField txtCampo4;
-    private javax.swing.JTextField txtCampo5;
-    private javax.swing.JTextField txtCampo6;
-    private javax.swing.JTextField txtCampo7;
     private javax.swing.JTextField txtBuscar;
+    private javax.swing.JTextField txtCpf;
+    private javax.swing.JTextField txtEmail;
+    private javax.swing.JTextField txtNome;
+    private javax.swing.JTextField txtTelefone;
     // End of variables declaration//GEN-END:variables
 }

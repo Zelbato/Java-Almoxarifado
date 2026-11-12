@@ -6,6 +6,8 @@ import com.mycompany.almoxarifado.Dao.StatusManutencaoDAO;
 import com.mycompany.almoxarifado.Dao.TipoManutencaoDAO;
 import com.mycompany.almoxarifado.Dao.UsuarioDAO;
 import com.mycompany.almoxarifado.Dto.ManutencaoDTO;
+import com.mycompany.almoxarifado.config.DatabaseConnection;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -28,15 +30,37 @@ public class ManutencaoService {
     public void cadastrar(ManutencaoDTO manutencao) throws SQLException {
         AuthSession.exigirEscrita();
         validar(manutencao);
-        validarRelacionamentos(manutencao);
-        manutencaoDAO.cadastrar(manutencao);
+        String status = validarRelacionamentos(manutencao);
+        boolean emAndamento = status.equals("EM_ANDAMENTO");
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String situacao = equipamentoDAO.buscarSituacaoParaAtualizar(connection, manutencao.getIdEquipamento());
+                if (emAndamento) {
+                    validarEntradaEmManutencao(situacao);
+                }
+
+                manutencaoDAO.cadastrar(connection, manutencao);
+
+                if (emAndamento) {
+                    equipamentoDAO.alterarSituacao(connection, manutencao.getIdEquipamento(), "EM_MANUTENCAO");
+                }
+                connection.commit();
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
     }
 
     public List<ManutencaoDTO> listarTodos() throws SQLException {
+        AuthSession.exigirAutenticacao();
         return manutencaoDAO.listarTodos();
     }
 
     public ManutencaoDTO buscarPorId(Long id) throws SQLException {
+        AuthSession.exigirAutenticacao();
         validarId(id);
         ManutencaoDTO manutencao = manutencaoDAO.buscarPorId(id);
         if (manutencao == null) {
@@ -53,19 +77,66 @@ public class ManutencaoService {
 
         validarId(manutencao.getIdManutencao());
         validar(manutencao);
-        validarRelacionamentos(manutencao);
+        String statusNovo = validarRelacionamentos(manutencao);
 
-        if (manutencaoDAO.buscarPorId(manutencao.getIdManutencao()) == null) {
+        ManutencaoDTO existente = manutencaoDAO.buscarPorId(manutencao.getIdManutencao());
+        if (existente == null) {
             throw new IllegalArgumentException("Manutenção não encontrada.");
         }
 
-        manutencaoDAO.atualizar(manutencao);
+        String statusAnterior = statusManutencaoDAO.buscarPorId(existente.getIdStatusManutencao()).getNome();
+
+        if ((statusAnterior.equals("CONCLUIDA") || statusAnterior.equals("CANCELADA"))
+                && !statusNovo.equals(statusAnterior)) {
+            throw new IllegalArgumentException("Manutenção encerrada não pode ser reaberta. Registre uma nova manutenção.");
+        }
+        if (!existente.getIdEquipamento().equals(manutencao.getIdEquipamento())) {
+            throw new IllegalArgumentException("Não é possível trocar o equipamento de uma manutenção já registrada.");
+        }
+
+        boolean entrando = statusNovo.equals("EM_ANDAMENTO") && !statusAnterior.equals("EM_ANDAMENTO");
+        boolean saindo = statusAnterior.equals("EM_ANDAMENTO") && !statusNovo.equals("EM_ANDAMENTO");
+
+        try (Connection connection = DatabaseConnection.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                String situacao = equipamentoDAO.buscarSituacaoParaAtualizar(connection, manutencao.getIdEquipamento());
+                if (entrando) {
+                    validarEntradaEmManutencao(situacao);
+                }
+
+                manutencaoDAO.atualizar(connection, manutencao);
+
+                if (entrando) {
+                    equipamentoDAO.alterarSituacao(connection, manutencao.getIdEquipamento(), "EM_MANUTENCAO");
+                } else if (saindo && "EM_MANUTENCAO".equals(situacao)) {
+                    equipamentoDAO.alterarSituacao(connection, manutencao.getIdEquipamento(), "DISPONIVEL");
+                }
+                connection.commit();
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            }
+        }
     }
 
     public void excluir(Long id) throws SQLException {
-        AuthSession.exigirEscrita();
-        buscarPorId(id);
+        AuthSession.exigirChefe();
+        ManutencaoDTO manutencao = buscarPorId(id);
+
+        String status = statusManutencaoDAO.buscarPorId(manutencao.getIdStatusManutencao()).getNome();
+        if (status.equals("EM_ANDAMENTO")) {
+            throw new IllegalArgumentException("Conclua ou cancele a manutenção antes de excluir.");
+        }
         manutencaoDAO.excluir(id);
+    }
+
+    // emprestado não pode ir pra manutenção, tem que ser devolvido antes
+    private void validarEntradaEmManutencao(String situacao) {
+        if (!"DISPONIVEL".equals(situacao) && !"DANIFICADO".equals(situacao)) {
+            throw new IllegalArgumentException(
+                    "O equipamento precisa estar DISPONIVEL ou DANIFICADO para entrar em manutenção. Situação atual: " + situacao + ".");
+        }
     }
 
     private void validar(ManutencaoDTO manutencao) {
@@ -95,7 +166,7 @@ public class ManutencaoService {
         }
     }
 
-    private void validarRelacionamentos(ManutencaoDTO manutencao) throws SQLException {
+    private String validarRelacionamentos(ManutencaoDTO manutencao) throws SQLException {
         if (equipamentoDAO.buscarPorId(manutencao.getIdEquipamento()) == null) {
             throw new IllegalArgumentException("Equipamento não encontrado.");
         }
@@ -112,6 +183,7 @@ public class ManutencaoService {
         }
 
         validarConclusaoPorStatus(manutencao, status.getNome());
+        return status.getNome();
     }
 
     private void validarId(Long id) {

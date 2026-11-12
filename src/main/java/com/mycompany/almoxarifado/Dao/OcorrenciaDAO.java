@@ -231,6 +231,37 @@ public class OcorrenciaDAO {
         }
     }
 
+    /**
+     * Usado na devolução: se a retirada tem ocorrência de DANO ou DEFEITO
+     * ainda não resolvida, o equipamento volta como DANIFICADO.
+     */
+    public boolean existeDanoAbertoNaMovimentacao(
+            Connection connection,
+            Long idMovimentacao
+    ) throws SQLException {
+
+        String sql = """
+                 SELECT COUNT(*)
+                 FROM ocorrencia o
+                 INNER JOIN tipo_ocorrencia t
+                     ON t.id_tipo_ocorrencia = o.id_tipo_ocorrencia
+                 INNER JOIN status_ocorrencia s
+                     ON s.id_status_ocorrencia = o.id_status_ocorrencia
+                 WHERE o.id_movimentacao = ?
+                 AND t.nome IN ('DANO', 'DEFEITO')
+                 AND s.nome IN ('ABERTA', 'EM_ANALISE')
+                 """;
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, idMovimentacao);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next() && resultSet.getLong(1) > 0;
+            }
+        }
+    }
+
     private OcorrenciaDTO converterResultSet(
             ResultSet resultSet
     ) throws SQLException {

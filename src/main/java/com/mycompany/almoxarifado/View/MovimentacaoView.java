@@ -4,23 +4,12 @@ import com.mycompany.almoxarifado.Dto.MovimentacaoDTO;
 import com.mycompany.almoxarifado.Service.MovimentacaoService;
 import com.mycompany.almoxarifado.Service.AuthSession;
 import com.toedter.calendar.JDateChooser;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
-import javax.swing.JComboBox;
-import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerDateModel;
 import javax.swing.event.ListSelectionEvent;
@@ -28,40 +17,19 @@ import javax.swing.table.DefaultTableModel;
 
 /**
  * Formulário JFrame do NetBeans para movimentações.
+ * Não tem botão de excluir: para anular uma retirada o status vira CANCELADA.
  */
 public class MovimentacaoView extends javax.swing.JFrame {
 
     private final MovimentacaoService service = new MovimentacaoService();
-    private final Map<String, JTextField> campos = new LinkedHashMap<>();
 
     private Long idSelecionado;
-
-    private JComboBox<ComboItem> cmbEquipamento;
-    private JComboBox<ComboItem> cmbFuncionario;
-    private JComboBox<ComboItem> cmbUsuarioRetirada;
-    private JComboBox<ComboItem> cmbUsuarioDevolucao;
-    private JComboBox<ComboItem> cmbStatus;
-
-    private JDateChooser calDataRetirada;
-    private JDateChooser calDataDevolucao;
-    private JDateChooser calDevolucaoPrevista;
-
-    private JSpinner spnHoraRetirada;
-    private JSpinner spnHoraDevolucao;
-    private JSpinner spnHoraPrevista;
-
-    private JPanel pnlDataRetirada;
-    private JPanel pnlDataDevolucao;
-    private JPanel pnlDevolucaoPrevista;
 
     public MovimentacaoView() {
         AuthSession.exigirAutenticacao();
         initComponents();
-        montarCampos();
-        configurarSelects();
-        configurarDatasHoras();
-        ajustarLayoutFormulario();
-        ViewStyle.botoesCrud(btnNovo, btnSalvar, btnEditar, btnExcluir);
+        configurarHoras();
+        carregarSelects();
         configurarEventos();
         aplicarPermissoes();
         limparFormulario();
@@ -72,175 +40,75 @@ public class MovimentacaoView extends javax.swing.JFrame {
         btnNovo.addActionListener(e -> limparFormulario());
         btnSalvar.addActionListener(e -> cadastrar());
         btnEditar.addActionListener(e -> editar());
-        btnExcluir.addActionListener(e -> excluir());
         cmbStatus.addActionListener(e -> atualizarCamposDevolucao());
         tblDados.getSelectionModel().addListSelectionListener(this::selecionarLinha);
     }
 
+    // Chefe e Júnior registram retiradas e devoluções
     private void aplicarPermissoes() {
         boolean permitido = AuthSession.podeEscrever();
-        btnNovo.setEnabled(permitido);
-        btnSalvar.setEnabled(permitido);
-        btnEditar.setEnabled(false);
-        btnExcluir.setEnabled(false);
+        btnNovo.setVisible(permitido);
+        btnSalvar.setVisible(permitido);
+        btnEditar.setVisible(permitido);
     }
 
     private MovimentacaoDTO lerFormulario() {
         MovimentacaoDTO dto = new MovimentacaoDTO();
-
-        dto.setIdEquipamento(
-                ViewInputSupport.id(
-                        cmbEquipamento,
-                        "O equipamento",
-                        true
-                )
-        );
-
-        dto.setIdFuncionario(
-                ViewInputSupport.id(
-                        cmbFuncionario,
-                        "O funcionário",
-                        true
-                )
-        );
-
-        dto.setIdUsuarioRetirada(
-                ViewInputSupport.id(
-                        cmbUsuarioRetirada,
-                        "O usuário da retirada",
-                        true
-                )
-        );
-
-        dto.setIdStatusMovimentacao(
-                ViewInputSupport.id(
-                        cmbStatus,
-                        "O status",
-                        true
-                )
-        );
-
         boolean devolvida = statusDevolvidaSelecionado();
 
-        if (devolvida) {
-            dto.setIdUsuarioDevolucao(
-                    ViewInputSupport.id(
-                            cmbUsuarioDevolucao,
-                            "O usuário da devolução",
-                            true
-                    )
-            );
-        } else {
-            dto.setIdUsuarioDevolucao(null);
-        }
-
-        dto.setDataRetirada(
-                lerDataHora(
-                        calDataRetirada,
-                        spnHoraRetirada,
-                        "A data de retirada",
-                        true
-                )
-        );
+        dto.setIdEquipamento(ViewInputSupport.id(cmbEquipamento, "O equipamento", true));
+        dto.setIdFuncionario(ViewInputSupport.id(cmbFuncionario, "O funcionário", true));
+        dto.setIdUsuarioRetirada(ViewInputSupport.id(cmbUsuarioRetirada, "O usuário da retirada", true));
+        dto.setIdStatusMovimentacao(ViewInputSupport.id(cmbStatus, "O status", true));
+        dto.setDataRetirada(lerDataHora(calDataRetirada, spnHoraRetirada, "A data de retirada", true));
+        dto.setDataPrevistaDevolucao(lerDataHora(calDevolucaoPrevista, spnHoraPrevista, "A devolução prevista", true));
+        dto.setFinalidade(ViewInputSupport.texto(txtFinalidade));
+        dto.setObservacaoRetirada(ViewInputSupport.texto(txtObservacaoRetirada));
 
         if (devolvida) {
-            dto.setDataDevolucao(
-                    lerDataHora(
-                            calDataDevolucao,
-                            spnHoraDevolucao,
-                            "A data de devolução",
-                            true
-                    )
-            );
-        } else {
-            dto.setDataDevolucao(null);
+            dto.setIdUsuarioDevolucao(ViewInputSupport.id(cmbUsuarioDevolucao, "O usuário da devolução", true));
+            dto.setDataDevolucao(lerDataHora(calDataDevolucao, spnHoraDevolucao, "A data de devolução", true));
+            dto.setObservacaoDevolucao(ViewInputSupport.texto(txtObservacaoDevolucao));
         }
-
-        dto.setDataPrevistaDevolucao(
-                lerDataHora(
-                        calDevolucaoPrevista,
-                        spnHoraPrevista,
-                        "A devolução prevista",
-                        true
-                )
-        );
-
-        dto.setFinalidade(
-                ViewInputSupport.texto(
-                        campos.get("Finalidade")
-                )
-        );
-
-        dto.setObservacaoRetirada(
-                ViewInputSupport.texto(
-                        campos.get("Observação retirada")
-                )
-        );
-
-        dto.setObservacaoDevolucao(
-                devolvida
-                        ? ViewInputSupport.texto(
-                                campos.get("Observação devolução")
-                        )
-                        : null
-        );
-
         return dto;
     }
 
     private boolean statusDevolvidaSelecionado() {
         Object selecionado = cmbStatus.getSelectedItem();
-        return selecionado != null
-                && "DEVOLVIDA".equalsIgnoreCase(
-                        selecionado.toString().trim()
-                );
+        return selecionado != null && "DEVOLVIDA".equalsIgnoreCase(selecionado.toString().trim());
     }
 
+    // os campos de devolução só ficam liberados quando o status é DEVOLVIDA
     private void atualizarCamposDevolucao() {
         boolean devolvida = statusDevolvidaSelecionado();
 
         cmbUsuarioDevolucao.setEnabled(devolvida);
         calDataDevolucao.setEnabled(devolvida);
         spnHoraDevolucao.setEnabled(devolvida);
-        campos.get("Observação devolução").setEnabled(devolvida);
+        txtObservacaoDevolucao.setEnabled(devolvida);
 
         if (!devolvida) {
             cmbUsuarioDevolucao.setSelectedIndex(-1);
             calDataDevolucao.setDate(null);
             spnHoraDevolucao.setValue(new Date());
-            campos.get("Observação devolução").setText("");
+            txtObservacaoDevolucao.setText("");
         }
     }
 
-    private LocalDateTime lerDataHora(
-            JDateChooser calendario,
-            JSpinner spinnerHora,
-            String campo,
-            boolean obrigatorio
-    ) {
+    private LocalDateTime lerDataHora(JDateChooser calendario, JSpinner spinnerHora, String campo, boolean obrigatorio) {
         Date dataSelecionada = calendario.getDate();
 
         if (dataSelecionada == null) {
             if (obrigatorio) {
-                throw new IllegalArgumentException(
-                        campo + " é obrigatória."
-                );
+                throw new IllegalArgumentException(campo + " é obrigatória.");
             }
-
             return null;
         }
 
         Date horaSelecionada = (Date) spinnerHora.getValue();
 
-        java.time.LocalDate data = dataSelecionada
-                .toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate();
-
-        java.time.LocalTime hora = horaSelecionada
-                .toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalTime()
+        java.time.LocalDate data = dataSelecionada.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        java.time.LocalTime hora = horaSelecionada.toInstant().atZone(ZoneId.systemDefault()).toLocalTime()
                 .withSecond(0)
                 .withNano(0);
 
@@ -250,7 +118,7 @@ public class MovimentacaoView extends javax.swing.JFrame {
     private void cadastrar() {
         try {
             service.cadastrar(lerFormulario());
-            sucesso("Movimentação cadastrada com sucesso.");
+            sucesso("Retirada registrada com sucesso.");
         } catch (IllegalArgumentException | SQLException ex) {
             erro(ex);
         }
@@ -261,37 +129,11 @@ public class MovimentacaoView extends javax.swing.JFrame {
             aviso("Selecione a movimentação para editar.");
             return;
         }
-
         try {
             MovimentacaoDTO dto = lerFormulario();
             dto.setIdMovimentacao(idSelecionado);
-
             service.atualizar(dto);
-
             sucesso("Movimentação atualizada com sucesso.");
-        } catch (IllegalArgumentException | SQLException ex) {
-            erro(ex);
-        }
-    }
-
-    private void excluir() {
-        if (idSelecionado == null) {
-            aviso("Selecione a movimentação para excluir.");
-            return;
-        }
-
-        if (JOptionPane.showConfirmDialog(
-                this,
-                "Deseja excluir a movimentação selecionada?",
-                "Confirmação",
-                JOptionPane.YES_NO_OPTION
-        ) != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            service.excluir(idSelecionado);
-            sucesso("Movimentação excluída com sucesso.");
         } catch (IllegalArgumentException | SQLException ex) {
             erro(ex);
         }
@@ -305,191 +147,100 @@ public class MovimentacaoView extends javax.swing.JFrame {
             for (MovimentacaoDTO dto : service.listarTodos()) {
                 modelo.addRow(new Object[]{
                     dto.getIdMovimentacao(),
-                    dto.getIdEquipamento(),
-                    dto.getIdFuncionario(),
-                    dto.getIdStatusMovimentacao(),
-                    dto.getDataRetirada(),
-                    dto.getDataPrevistaDevolucao(),
-                    dto.getDataDevolucao()
+                    ViewInputSupport.nomeDoItem(cmbEquipamento, dto.getIdEquipamento()),
+                    ViewInputSupport.nomeDoItem(cmbFuncionario, dto.getIdFuncionario()),
+                    ViewInputSupport.nomeDoItem(cmbStatus, dto.getIdStatusMovimentacao()),
+                    ViewInputSupport.formatar(dto.getDataRetirada()),
+                    ViewInputSupport.formatar(dto.getDataPrevistaDevolucao()),
+                    ViewInputSupport.formatar(dto.getDataDevolucao())
                 });
             }
-
         } catch (SQLException ex) {
             erro(ex);
         }
     }
 
     private void selecionarLinha(ListSelectionEvent evento) {
-        if (evento.getValueIsAdjusting()
-                || tblDados.getSelectedRow() < 0) {
+        if (evento.getValueIsAdjusting() || tblDados.getSelectedRow() < 0) {
             return;
         }
 
-        int linha = tblDados.convertRowIndexToModel(
-                tblDados.getSelectedRow()
-        );
-
-        Long id = Long.valueOf(
-                tblDados.getModel()
-                        .getValueAt(linha, 0)
-                        .toString()
-        );
+        int linha = tblDados.convertRowIndexToModel(tblDados.getSelectedRow());
+        Long id = Long.valueOf(tblDados.getModel().getValueAt(linha, 0).toString());
 
         try {
             preencher(service.buscarPorId(id));
-
             idSelecionado = id;
             btnSalvar.setEnabled(false);
-
-            boolean permitido = AuthSession.podeEscrever();
-
-            btnEditar.setEnabled(permitido);
-            btnExcluir.setEnabled(permitido);
-
+            btnEditar.setEnabled(true);
         } catch (SQLException | IllegalArgumentException ex) {
             erro(ex);
         }
     }
 
     private void preencher(MovimentacaoDTO dto) {
-        ViewInputSupport.selecionar(
-                cmbEquipamento,
-                dto.getIdEquipamento()
-        );
+        ViewInputSupport.selecionar(cmbEquipamento, dto.getIdEquipamento());
+        ViewInputSupport.selecionar(cmbFuncionario, dto.getIdFuncionario());
+        ViewInputSupport.selecionar(cmbUsuarioRetirada, dto.getIdUsuarioRetirada());
+        ViewInputSupport.selecionar(cmbStatus, dto.getIdStatusMovimentacao());
+        ViewInputSupport.selecionar(cmbUsuarioDevolucao, dto.getIdUsuarioDevolucao());
 
-        ViewInputSupport.selecionar(
-                cmbFuncionario,
-                dto.getIdFuncionario()
-        );
+        preencherDataHora(calDataRetirada, spnHoraRetirada, dto.getDataRetirada());
+        preencherDataHora(calDevolucaoPrevista, spnHoraPrevista, dto.getDataPrevistaDevolucao());
+        preencherDataHora(calDataDevolucao, spnHoraDevolucao, dto.getDataDevolucao());
 
-        ViewInputSupport.selecionar(
-                cmbUsuarioRetirada,
-                dto.getIdUsuarioRetirada()
-        );
-
-        ViewInputSupport.selecionar(
-                cmbUsuarioDevolucao,
-                dto.getIdUsuarioDevolucao()
-        );
-
-        ViewInputSupport.selecionar(
-                cmbStatus,
-                dto.getIdStatusMovimentacao()
-        );
-
-        preencherDataHora(
-                calDataRetirada,
-                spnHoraRetirada,
-                dto.getDataRetirada()
-        );
-
-        preencherDataHora(
-                calDataDevolucao,
-                spnHoraDevolucao,
-                dto.getDataDevolucao()
-        );
-
-        preencherDataHora(
-                calDevolucaoPrevista,
-                spnHoraPrevista,
-                dto.getDataPrevistaDevolucao()
-        );
-
-        preencher(
-                "Finalidade",
-                dto.getFinalidade()
-        );
-
-        preencher(
-                "Observação retirada",
-                dto.getObservacaoRetirada()
-        );
-
-        preencher(
-                "Observação devolução",
-                dto.getObservacaoDevolucao()
-        );
+        ViewInputSupport.preencher(txtFinalidade, dto.getFinalidade());
+        ViewInputSupport.preencher(txtObservacaoRetirada, dto.getObservacaoRetirada());
+        ViewInputSupport.preencher(txtObservacaoDevolucao, dto.getObservacaoDevolucao());
 
         atualizarCamposDevolucao();
     }
 
-    private void preencherDataHora(
-            JDateChooser calendario,
-            JSpinner spinnerHora,
-            LocalDateTime valor
-    ) {
+    private void preencherDataHora(JDateChooser calendario, JSpinner spinnerHora, LocalDateTime valor) {
         if (valor == null) {
             calendario.setDate(null);
             spinnerHora.setValue(new Date());
             return;
         }
 
-        Date data = Date.from(
-                valor
-                        .atZone(ZoneId.systemDefault())
-                        .toInstant()
-        );
-
+        Date data = Date.from(valor.atZone(ZoneId.systemDefault()).toInstant());
         calendario.setDate(data);
         spinnerHora.setValue(data);
-    }
-
-    private void preencher(String campo, Object valor) {
-        ViewInputSupport.preencher(
-                campos.get(campo),
-                valor
-        );
     }
 
     private void limparFormulario() {
         idSelecionado = null;
 
-        campos.values().forEach(
-                campo -> campo.setText("")
-        );
+        txtFinalidade.setText("");
+        txtObservacaoRetirada.setText("");
+        txtObservacaoDevolucao.setText("");
 
-        ViewInputSupport.selecionar(
-                cmbEquipamento,
-                null
-        );
+        ViewInputSupport.selecionar(cmbEquipamento, null);
+        ViewInputSupport.selecionar(cmbFuncionario, null);
+        ViewInputSupport.selecionar(cmbUsuarioDevolucao, null);
+        ViewInputSupport.selecionar(cmbStatus, null);
+        // retirada nova sempre começa EM_ABERTO
+        for (int i = 0; i < cmbStatus.getItemCount(); i++) {
+            if (cmbStatus.getItemAt(i).toString().equals("EM_ABERTO")) {
+                cmbStatus.setSelectedIndex(i);
+            }
+        }
 
-        ViewInputSupport.selecionar(
-                cmbFuncionario,
-                null
-        );
+        // quem está logado já vem como responsável pela retirada
+        ViewInputSupport.selecionar(cmbUsuarioRetirada, AuthSession.usuario().getIdUsuario());
 
-        ViewInputSupport.selecionar(
-                cmbUsuarioRetirada,
-                null
-        );
-
-        ViewInputSupport.selecionar(
-                cmbUsuarioDevolucao,
-                null
-        );
-
-        ViewInputSupport.selecionar(
-                cmbStatus,
-                null
-        );
-
-        calDataRetirada.setDate(null);
+        calDataRetirada.setDate(new Date());
         calDataDevolucao.setDate(null);
         calDevolucaoPrevista.setDate(null);
 
         Date agora = new Date();
-
         spnHoraRetirada.setValue(agora);
         spnHoraDevolucao.setValue(agora);
         spnHoraPrevista.setValue(agora);
 
         tblDados.clearSelection();
-
-        boolean permitido = AuthSession.podeEscrever();
-
-        btnSalvar.setEnabled(permitido);
+        btnSalvar.setEnabled(true);
         btnEditar.setEnabled(false);
-        btnExcluir.setEnabled(false);
 
         atualizarCamposDevolucao();
     }
@@ -501,116 +252,34 @@ public class MovimentacaoView extends javax.swing.JFrame {
     }
 
     private void aviso(String mensagem) {
-        JOptionPane.showMessageDialog(
-                this,
-                mensagem,
-                "Atenção",
-                JOptionPane.WARNING_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, mensagem, "Atenção", JOptionPane.WARNING_MESSAGE);
     }
 
     private void erro(Exception ex) {
-        JOptionPane.showMessageDialog(
-                this,
-                ex.getMessage(),
-                "Erro",
-                JOptionPane.ERROR_MESSAGE
-        );
+        JOptionPane.showMessageDialog(this, ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
     }
 
-    private void montarCampos() {
-        campos.put("Finalidade", txtCampo9);
-        campos.put("Observação retirada", txtCampo10);
-        campos.put("Observação devolução", txtCampo11);
-    }
-
-    private void configurarSelects() {
-        cmbEquipamento = new JComboBox<>();
-        cmbFuncionario = new JComboBox<>();
-        cmbUsuarioRetirada = new JComboBox<>();
-        cmbUsuarioDevolucao = new JComboBox<>();
-        cmbStatus = new JComboBox<>();
-
-        ViewInputSupport.substituirNoPainel(
-                pnlCampos,
-                txtCampo1,
-                cmbEquipamento
-        );
-
-        ViewInputSupport.substituirNoPainel(
-                pnlCampos,
-                txtCampo2,
-                cmbFuncionario
-        );
-
-        ViewInputSupport.substituirNoPainel(
-                pnlCampos,
-                txtCampo3,
-                cmbUsuarioRetirada
-        );
-
-        ViewInputSupport.substituirNoPainel(
-                pnlCampos,
-                txtCampo4,
-                cmbUsuarioDevolucao
-        );
-
-        ViewInputSupport.substituirNoPainel(
-                pnlCampos,
-                txtCampo5,
-                cmbStatus
-        );
-
+    private void carregarSelects() {
         try {
             for (com.mycompany.almoxarifado.Dto.EquipamentoDTO item
                     : new com.mycompany.almoxarifado.Service.EquipamentoService().listarTodos()) {
-
-                cmbEquipamento.addItem(
-                        new ComboItem(
-                                item.getIdEquipamento(),
-                                item.getNome()
-                        )
-                );
+                cmbEquipamento.addItem(new ComboItem(item.getIdEquipamento(), item.getNome()));
             }
 
             for (com.mycompany.almoxarifado.Dto.FuncionarioDTO item
                     : new com.mycompany.almoxarifado.Service.FuncionarioService().listarTodos()) {
-
-                cmbFuncionario.addItem(
-                        new ComboItem(
-                                item.getIdFuncionario(),
-                                item.getNome()
-                        )
-                );
+                cmbFuncionario.addItem(new ComboItem(item.getIdFuncionario(), item.getNome()));
             }
 
             for (com.mycompany.almoxarifado.Dto.UsuarioDTO item
                     : new com.mycompany.almoxarifado.Service.UsuarioService().listarTodos()) {
-
-                cmbUsuarioRetirada.addItem(
-                        new ComboItem(
-                                item.getIdUsuario(),
-                                item.getEmail()
-                        )
-                );
-
-                cmbUsuarioDevolucao.addItem(
-                        new ComboItem(
-                                item.getIdUsuario(),
-                                item.getEmail()
-                        )
-                );
+                cmbUsuarioRetirada.addItem(new ComboItem(item.getIdUsuario(), item.getEmail()));
+                cmbUsuarioDevolucao.addItem(new ComboItem(item.getIdUsuario(), item.getEmail()));
             }
 
             for (com.mycompany.almoxarifado.Dto.StatusMovimentacaoDTO item
                     : new com.mycompany.almoxarifado.Service.StatusMovimentacaoService().listarTodos()) {
-
-                cmbStatus.addItem(
-                        new ComboItem(
-                                item.getIdStatusMovimentacao(),
-                                item.getNome()
-                        )
-                );
+                cmbStatus.addItem(new ComboItem(item.getIdStatusMovimentacao(), item.getNome()));
             }
 
             cmbEquipamento.setSelectedIndex(-1);
@@ -618,859 +287,391 @@ public class MovimentacaoView extends javax.swing.JFrame {
             cmbUsuarioRetirada.setSelectedIndex(-1);
             cmbUsuarioDevolucao.setSelectedIndex(-1);
             cmbStatus.setSelectedIndex(-1);
-
         } catch (SQLException ex) {
             erro(ex);
         }
     }
 
-    private void configurarDatasHoras() {
-        calDataRetirada = new JDateChooser();
-        calDataDevolucao = new JDateChooser();
-        calDevolucaoPrevista = new JDateChooser();
-
-        calDataRetirada.setDateFormatString("dd/MM/yyyy");
-        calDataDevolucao.setDateFormatString("dd/MM/yyyy");
-        calDevolucaoPrevista.setDateFormatString("dd/MM/yyyy");
-
-        spnHoraRetirada = criarSpinnerHora();
-        spnHoraDevolucao = criarSpinnerHora();
-        spnHoraPrevista = criarSpinnerHora();
-
-        pnlDataRetirada = criarPainelDataHora(
-                calDataRetirada,
-                spnHoraRetirada
-        );
-
-        pnlDataDevolucao = criarPainelDataHora(
-                calDataDevolucao,
-                spnHoraDevolucao
-        );
-
-        pnlDevolucaoPrevista = criarPainelDataHora(
-                calDevolucaoPrevista,
-                spnHoraPrevista
-        );
-
-        substituirComponente(txtCampo6, pnlDataRetirada);
-        substituirComponente(txtCampo7, pnlDataDevolucao);
-        substituirComponente(txtCampo8, pnlDevolucaoPrevista);
-    }
-
-    private JSpinner criarSpinnerHora() {
-        SpinnerDateModel modelo = new SpinnerDateModel(
-                new Date(),
-                null,
-                null,
-                Calendar.MINUTE
-        );
-
-        JSpinner spinner = new JSpinner(modelo);
-
-        spinner.setEditor(
-                new JSpinner.DateEditor(
-                        spinner,
-                        "HH:mm"
-                )
-        );
-
-        spinner.setPreferredSize(new Dimension(82, 32));
-
-        return spinner;
-    }
-
-    private JPanel criarPainelDataHora(
-            JDateChooser calendario,
-            JSpinner spinnerHora
-    ) {
-        JPanel painel = new JPanel(
-                new BorderLayout(6, 0)
-        );
-
-        painel.setOpaque(false);
-        calendario.setPreferredSize(new Dimension(180, 32));
-
-        painel.add(calendario, BorderLayout.CENTER);
-        painel.add(spinnerHora, BorderLayout.EAST);
-
-        return painel;
-    }
-
-    private void substituirComponente(
-            java.awt.Component antigo,
-            java.awt.Component novo
-    ) {
-        for (int i = 0; i < pnlCampos.getComponentCount(); i++) {
-            if (pnlCampos.getComponent(i) == antigo) {
-                pnlCampos.remove(i);
-                pnlCampos.add(novo, i);
-                pnlCampos.revalidate();
-                pnlCampos.repaint();
-                return;
-            }
+    // os spinners de hora estão no form; aqui só troca o modelo para mostrar HH:mm
+    private void configurarHoras() {
+        for (JSpinner spinner : new JSpinner[]{spnHoraRetirada, spnHoraPrevista, spnHoraDevolucao}) {
+            spinner.setModel(new SpinnerDateModel(new Date(), null, null, Calendar.MINUTE));
+            spinner.setEditor(new JSpinner.DateEditor(spinner, "HH:mm"));
         }
     }
 
-    private void ajustarLayoutFormulario() {
-        pnlCampos.removeAll();
-        pnlCampos.setLayout(new GridBagLayout());
-        pnlCampos.setBackground(java.awt.Color.WHITE);
-        pnlCampos.setBorder(
-                javax.swing.BorderFactory.createEmptyBorder(
-                        12,
-                        12,
-                        12,
-                        12
-                )
-        );
-
-        java.awt.Font fonte = new java.awt.Font(
-                "Segoe UI",
-                java.awt.Font.BOLD,
-                12
-        );
-
-        javax.swing.JLabel[] labels = {
-            lblCampo1,
-            lblCampo2,
-            lblCampo3,
-            lblCampo4,
-            lblCampo5,
-            lblCampo6,
-            lblCampo7,
-            lblCampo8,
-            lblCampo9,
-            lblCampo10,
-            lblCampo11
-        };
-
-        for (javax.swing.JLabel label : labels) {
-            label.setFont(fonte);
-        }
-
-        adicionarCampo(lblCampo1, cmbEquipamento, 0, 0);
-        adicionarCampo(lblCampo2, cmbFuncionario, 2, 0);
-
-        adicionarCampo(lblCampo3, cmbUsuarioRetirada, 0, 1);
-        adicionarCampo(lblCampo4, cmbUsuarioDevolucao, 2, 1);
-
-        adicionarCampo(lblCampo5, cmbStatus, 0, 2);
-        adicionarCampo(lblCampo9, txtCampo9, 2, 2);
-
-        adicionarCampo(lblCampo6, pnlDataRetirada, 0, 3);
-        adicionarCampo(lblCampo8, pnlDevolucaoPrevista, 2, 3);
-
-        adicionarCampo(lblCampo7, pnlDataDevolucao, 0, 4);
-        adicionarCampo(lblCampo10, txtCampo10, 2, 4);
-
-        adicionarCampoLargo(
-                lblCampo11,
-                txtCampo11,
-                5
-        );
-
-        javax.swing.JPanel pnlAcoes = new javax.swing.JPanel(
-                new FlowLayout(
-                        FlowLayout.RIGHT,
-                        12,
-                        0
-                )
-        );
-
-        pnlAcoes.setOpaque(false);
-        pnlAcoes.add(btnNovo);
-        pnlAcoes.add(btnSalvar);
-        pnlAcoes.add(btnEditar);
-        pnlAcoes.add(btnExcluir);
-
-        pnlFormulario.removeAll();
-        pnlFormulario.setLayout(
-                new BorderLayout(
-                        0,
-                        14
-                )
-        );
-
-        pnlFormulario.add(
-                pnlCampos,
-                BorderLayout.CENTER
-        );
-
-        pnlFormulario.add(
-                pnlAcoes,
-                BorderLayout.SOUTH
-        );
-
-        pnlFormulario.setPreferredSize(
-                new Dimension(
-                        950,
-                        360
-                )
-        );
-
-        pnlPesquisa.removeAll();
-        pnlPesquisa.setLayout(
-                new BorderLayout(
-                        16,
-                        0
-                )
-        );
-
-        pnlPesquisa.setBorder(
-                javax.swing.BorderFactory.createCompoundBorder(
-                        javax.swing.BorderFactory.createLineBorder(
-                                new java.awt.Color(
-                                        179,
-                                        179,
-                                        179
-                                )
-                        ),
-                        javax.swing.BorderFactory.createEmptyBorder(
-                                14,
-                                16,
-                                14,
-                                16
-                        )
-                )
-        );
-
-        pnlPesquisa.add(
-                lblBuscar,
-                BorderLayout.WEST
-        );
-
-        pnlPesquisa.add(
-                txtBuscar,
-                BorderLayout.CENTER
-        );
-
-        tblDados.setRowHeight(26);
-        tblDados.setSelectionMode(
-                javax.swing.ListSelectionModel.SINGLE_SELECTION
-        );
-
-        tblDados.getTableHeader()
-                .setReorderingAllowed(false);
-
-        jPanel1.setPreferredSize(
-                new Dimension(
-                        1000,
-                        760
-                )
-        );
-
-        setMinimumSize(
-                new Dimension(
-                        1030,
-                        790
-                )
-        );
-
-        pnlCampos.revalidate();
-        pnlCampos.repaint();
-
-        pnlFormulario.revalidate();
-        pnlFormulario.repaint();
-
-        pnlPesquisa.revalidate();
-        pnlPesquisa.repaint();
-
-        pack();
-        setLocationRelativeTo(null);
-    }
-
-    private void adicionarCampo(
-            javax.swing.JLabel label,
-            java.awt.Component campo,
-            int coluna,
-            int linha
-    ) {
-        GridBagConstraints gbcLabel
-                = new GridBagConstraints();
-
-        gbcLabel.gridx = coluna;
-        gbcLabel.gridy = linha;
-        gbcLabel.weightx = 0;
-        gbcLabel.fill = GridBagConstraints.NONE;
-        gbcLabel.anchor = GridBagConstraints.WEST;
-        gbcLabel.insets = new Insets(
-                7,
-                0,
-                7,
-                12
-        );
-
-        pnlCampos.add(
-                label,
-                gbcLabel
-        );
-
-        GridBagConstraints gbcCampo
-                = new GridBagConstraints();
-
-        gbcCampo.gridx = coluna + 1;
-        gbcCampo.gridy = linha;
-        gbcCampo.weightx = 1;
-        gbcCampo.fill = GridBagConstraints.HORIZONTAL;
-        gbcCampo.anchor = GridBagConstraints.WEST;
-        gbcCampo.insets = new Insets(
-                7,
-                0,
-                7,
-                coluna == 0 ? 24 : 0
-        );
-
-        campo.setPreferredSize(
-                new Dimension(
-                        250,
-                        32
-                )
-        );
-
-        pnlCampos.add(
-                campo,
-                gbcCampo
-        );
-    }
-
-    private void adicionarCampoLargo(
-            javax.swing.JLabel label,
-            java.awt.Component campo,
-            int linha
-    ) {
-        GridBagConstraints gbcLabel
-                = new GridBagConstraints();
-
-        gbcLabel.gridx = 0;
-        gbcLabel.gridy = linha;
-        gbcLabel.weightx = 0;
-        gbcLabel.fill = GridBagConstraints.NONE;
-        gbcLabel.anchor = GridBagConstraints.WEST;
-        gbcLabel.insets = new Insets(
-                7,
-                0,
-                7,
-                12
-        );
-
-        pnlCampos.add(
-                label,
-                gbcLabel
-        );
-
-        GridBagConstraints gbcCampo
-                = new GridBagConstraints();
-
-        gbcCampo.gridx = 1;
-        gbcCampo.gridy = linha;
-        gbcCampo.gridwidth = 3;
-        gbcCampo.weightx = 1;
-        gbcCampo.fill = GridBagConstraints.HORIZONTAL;
-        gbcCampo.insets = new Insets(
-                7,
-                0,
-                7,
-                0
-        );
-
-        campo.setPreferredSize(
-                new Dimension(
-                        650,
-                        32
-                )
-        );
-
-        pnlCampos.add(
-                campo,
-                gbcCampo
-        );
-    }
-
+    @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
-        jPanel1 = new javax.swing.JPanel();
-        pnlFormulario = new javax.swing.JPanel();
-        pnlCampos = new javax.swing.JPanel();
-        lblCampo1 = new javax.swing.JLabel();
-        txtCampo1 = new javax.swing.JTextField();
-        lblCampo2 = new javax.swing.JLabel();
-        txtCampo2 = new javax.swing.JTextField();
-        lblCampo3 = new javax.swing.JLabel();
-        txtCampo3 = new javax.swing.JTextField();
-        lblCampo4 = new javax.swing.JLabel();
-        txtCampo4 = new javax.swing.JTextField();
-        lblCampo5 = new javax.swing.JLabel();
-        txtCampo5 = new javax.swing.JTextField();
-        lblCampo6 = new javax.swing.JLabel();
-        txtCampo6 = new javax.swing.JTextField();
-        lblCampo7 = new javax.swing.JLabel();
-        txtCampo7 = new javax.swing.JTextField();
-        lblCampo8 = new javax.swing.JLabel();
-        txtCampo8 = new javax.swing.JTextField();
-        lblCampo9 = new javax.swing.JLabel();
-        txtCampo9 = new javax.swing.JTextField();
-        lblCampo10 = new javax.swing.JLabel();
-        txtCampo10 = new javax.swing.JTextField();
-        lblCampo11 = new javax.swing.JLabel();
-        txtCampo11 = new javax.swing.JTextField();
-        pnlPesquisa = new javax.swing.JPanel();
+
+        pnlPrincipal = new javax.swing.JPanel();
         lblTituloFormulario = new javax.swing.JLabel();
-        lblTituloPesquisa = new javax.swing.JLabel();
-        lblTituloLista = new javax.swing.JLabel();
-        lblBuscar = new javax.swing.JLabel();
-        txtBuscar = new javax.swing.JTextField();
+        pnlFormulario = new javax.swing.JPanel();
+        lblSecaoRetirada = new javax.swing.JLabel();
+        lblEquipamento = new javax.swing.JLabel();
+        cmbEquipamento = new javax.swing.JComboBox<>();
+        lblFuncionario = new javax.swing.JLabel();
+        cmbFuncionario = new javax.swing.JComboBox<>();
+        lblUsuarioRetirada = new javax.swing.JLabel();
+        cmbUsuarioRetirada = new javax.swing.JComboBox<>();
+        lblStatus = new javax.swing.JLabel();
+        cmbStatus = new javax.swing.JComboBox<>();
+        lblDataRetirada = new javax.swing.JLabel();
+        pnlDataRetirada = new javax.swing.JPanel();
+        calDataRetirada = new com.toedter.calendar.JDateChooser();
+        spnHoraRetirada = new javax.swing.JSpinner();
+        lblDevolucaoPrevista = new javax.swing.JLabel();
+        pnlDevolucaoPrevista = new javax.swing.JPanel();
+        calDevolucaoPrevista = new com.toedter.calendar.JDateChooser();
+        spnHoraPrevista = new javax.swing.JSpinner();
+        lblFinalidade = new javax.swing.JLabel();
+        txtFinalidade = new javax.swing.JTextField();
+        lblObservacaoRetirada = new javax.swing.JLabel();
+        txtObservacaoRetirada = new javax.swing.JTextField();
+        lblSecaoDevolucao = new javax.swing.JLabel();
+        lblUsuarioDevolucao = new javax.swing.JLabel();
+        cmbUsuarioDevolucao = new javax.swing.JComboBox<>();
+        lblDataDevolucao = new javax.swing.JLabel();
+        pnlDataDevolucao = new javax.swing.JPanel();
+        calDataDevolucao = new com.toedter.calendar.JDateChooser();
+        spnHoraDevolucao = new javax.swing.JSpinner();
+        lblObservacaoDevolucao = new javax.swing.JLabel();
+        txtObservacaoDevolucao = new javax.swing.JTextField();
         btnNovo = new javax.swing.JButton();
         btnSalvar = new javax.swing.JButton();
         btnEditar = new javax.swing.JButton();
-        btnExcluir = new javax.swing.JButton();
+        lblTituloPesquisa = new javax.swing.JLabel();
+        pnlPesquisa = new javax.swing.JPanel();
+        lblBuscar = new javax.swing.JLabel();
+        txtBuscar = new javax.swing.JTextField();
+        lblTituloLista = new javax.swing.JLabel();
         scrollDados = new javax.swing.JScrollPane();
         tblDados = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Almoxarifado - Movimentações");
-        setMinimumSize(new java.awt.Dimension(1030, 790));
-        getContentPane().setBackground(new java.awt.Color(248, 249, 250));
+        setMinimumSize(new java.awt.Dimension(1000, 680));
 
-        jPanel1.setBackground(new java.awt.Color(248, 249, 250));
-        jPanel1.setPreferredSize(new java.awt.Dimension(1000, 760));
+        pnlPrincipal.setBackground(new java.awt.Color(248, 249, 250));
+        lblTituloFormulario.setText("Retirada / Devolução de Equipamento");
+        lblTituloFormulario.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTituloFormulario.setForeground(new java.awt.Color(0, 78, 174));
 
-        pnlFormulario.setBackground(java.awt.Color.WHITE);
-        pnlFormulario.setBorder(
-                new javax.swing.border.LineBorder(
-                        new java.awt.Color(179, 179, 179),
-                        1,
-                        true
-                )
+        pnlFormulario.setBackground(new java.awt.Color(255, 255, 255));
+        pnlFormulario.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
+        lblSecaoRetirada.setText("Retirada");
+        lblSecaoRetirada.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblSecaoRetirada.setForeground(new java.awt.Color(108, 117, 125));
+
+        lblEquipamento.setText("Equipamento:");
+        lblEquipamento.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblFuncionario.setText("Funcionário:");
+        lblFuncionario.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblUsuarioRetirada.setText("Responsável:");
+        lblUsuarioRetirada.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblStatus.setText("Status:");
+        lblStatus.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblDataRetirada.setText("Data da retirada:");
+        lblDataRetirada.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        pnlDataRetirada.setBackground(new java.awt.Color(255, 255, 255));
+        calDataRetirada.setDateFormatString("dd/MM/yyyy");
+
+        javax.swing.GroupLayout pnlDataRetiradaLayout = new javax.swing.GroupLayout(pnlDataRetirada);
+        pnlDataRetirada.setLayout(pnlDataRetiradaLayout);
+        pnlDataRetiradaLayout.setHorizontalGroup(
+            pnlDataRetiradaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlDataRetiradaLayout.createSequentialGroup()
+                .addComponent(calDataRetirada, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                .addGap(6, 6, 6)
+                .addComponent(spnHoraRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+        pnlDataRetiradaLayout.setVerticalGroup(
+            pnlDataRetiradaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+            .addComponent(calDataRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(spnHoraRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
         );
 
-        pnlPesquisa.setBackground(java.awt.Color.WHITE);
+        lblDevolucaoPrevista.setText("Devolver até:");
+        lblDevolucaoPrevista.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
-        pnlPesquisa.setBorder(
-                javax.swing.BorderFactory.createLineBorder(
-                        new java.awt.Color(179, 179, 179)
-                )
+        pnlDevolucaoPrevista.setBackground(new java.awt.Color(255, 255, 255));
+        calDevolucaoPrevista.setDateFormatString("dd/MM/yyyy");
+
+        javax.swing.GroupLayout pnlDevolucaoPrevistaLayout = new javax.swing.GroupLayout(pnlDevolucaoPrevista);
+        pnlDevolucaoPrevista.setLayout(pnlDevolucaoPrevistaLayout);
+        pnlDevolucaoPrevistaLayout.setHorizontalGroup(
+            pnlDevolucaoPrevistaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlDevolucaoPrevistaLayout.createSequentialGroup()
+                .addComponent(calDevolucaoPrevista, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                .addGap(6, 6, 6)
+                .addComponent(spnHoraPrevista, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE))
+        );
+        pnlDevolucaoPrevistaLayout.setVerticalGroup(
+            pnlDevolucaoPrevistaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+            .addComponent(calDevolucaoPrevista, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(spnHoraPrevista, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
         );
 
-        java.awt.Font tituloFont
-                = new java.awt.Font(
-                        "Segoe UI",
-                        java.awt.Font.BOLD,
-                        12
-                );
+        lblFinalidade.setText("Finalidade:");
+        lblFinalidade.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
-        lblTituloFormulario.setFont(tituloFont);
-        lblTituloFormulario.setForeground(
-                new java.awt.Color(0, 78, 174)
+        lblObservacaoRetirada.setText("Observação:");
+        lblObservacaoRetirada.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblSecaoDevolucao.setText("Devolução");
+        lblSecaoDevolucao.setFont(new java.awt.Font("Segoe UI", 1, 13)); // NOI18N
+        lblSecaoDevolucao.setForeground(new java.awt.Color(108, 117, 125));
+
+        lblUsuarioDevolucao.setText("Recebido por:");
+        lblUsuarioDevolucao.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        lblDataDevolucao.setText("Data da devolução:");
+        lblDataDevolucao.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        pnlDataDevolucao.setBackground(new java.awt.Color(255, 255, 255));
+        calDataDevolucao.setDateFormatString("dd/MM/yyyy");
+
+        javax.swing.GroupLayout pnlDataDevolucaoLayout = new javax.swing.GroupLayout(pnlDataDevolucao);
+        pnlDataDevolucao.setLayout(pnlDataDevolucaoLayout);
+        pnlDataDevolucaoLayout.setHorizontalGroup(
+            pnlDataDevolucaoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlDataDevolucaoLayout.createSequentialGroup()
+                .addComponent(calDataDevolucao, javax.swing.GroupLayout.DEFAULT_SIZE, 150, Short.MAX_VALUE)
+                .addGap(6, 6, 6)
+                .addComponent(spnHoraDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
-        lblTituloFormulario.setText(
-                "Cadastro / Edição de Movimentação"
-        );
-
-        lblTituloPesquisa.setFont(tituloFont);
-        lblTituloPesquisa.setForeground(
-                new java.awt.Color(0, 78, 174)
-        );
-        lblTituloPesquisa.setText("Pesquisa");
-
-        lblTituloLista.setFont(tituloFont);
-        lblTituloLista.setForeground(
-                new java.awt.Color(0, 78, 174)
-        );
-        lblTituloLista.setText("Lista de Movimentações");
-
-        lblBuscar.setFont(tituloFont);
-        lblBuscar.setText("Buscar:");
-
-        txtBuscar.setText("Digite para buscar...");
-
-        pnlCampos.setLayout(
-                new java.awt.GridLayout(
-                        0,
-                        2,
-                        12,
-                        10
-                )
+        pnlDataDevolucaoLayout.setVerticalGroup(
+            pnlDataDevolucaoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+            .addComponent(calDataDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addComponent(spnHoraDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
         );
 
-        lblCampo1.setFont(tituloFont);
-        lblCampo1.setText("Equipamento:");
-        pnlCampos.add(lblCampo1);
-        pnlCampos.add(txtCampo1);
+        lblObservacaoDevolucao.setText("Observação:");
+        lblObservacaoDevolucao.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
 
-        lblCampo2.setFont(tituloFont);
-        lblCampo2.setText("Funcionário:");
-        pnlCampos.add(lblCampo2);
-        pnlCampos.add(txtCampo2);
-
-        lblCampo3.setFont(tituloFont);
-        lblCampo3.setText("Usuário da retirada:");
-        pnlCampos.add(lblCampo3);
-        pnlCampos.add(txtCampo3);
-
-        lblCampo4.setFont(tituloFont);
-        lblCampo4.setText("Usuário da devolução:");
-        pnlCampos.add(lblCampo4);
-        pnlCampos.add(txtCampo4);
-
-        lblCampo5.setFont(tituloFont);
-        lblCampo5.setText("Status:");
-        pnlCampos.add(lblCampo5);
-        pnlCampos.add(txtCampo5);
-
-        lblCampo6.setFont(tituloFont);
-        lblCampo6.setText("Data retirada:");
-        pnlCampos.add(lblCampo6);
-        pnlCampos.add(txtCampo6);
-
-        lblCampo7.setFont(tituloFont);
-        lblCampo7.setText("Data devolução:");
-        pnlCampos.add(lblCampo7);
-        pnlCampos.add(txtCampo7);
-
-        lblCampo8.setFont(tituloFont);
-        lblCampo8.setText("Devolução prevista:");
-        pnlCampos.add(lblCampo8);
-        pnlCampos.add(txtCampo8);
-
-        lblCampo9.setFont(tituloFont);
-        lblCampo9.setText("Finalidade:");
-        pnlCampos.add(lblCampo9);
-        pnlCampos.add(txtCampo9);
-
-        lblCampo10.setFont(tituloFont);
-        lblCampo10.setText("Observação retirada:");
-        pnlCampos.add(lblCampo10);
-        pnlCampos.add(txtCampo10);
-
-        lblCampo11.setFont(tituloFont);
-        lblCampo11.setText("Observação devolução:");
-        pnlCampos.add(lblCampo11);
-        pnlCampos.add(txtCampo11);
-
-
-        btnNovo.setBackground(
-                new java.awt.Color(0, 78, 174)
-        );
-        btnNovo.setFont(tituloFont);
-        btnNovo.setForeground(java.awt.Color.WHITE);
+        btnNovo.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnNovo.setText("+ Novo");
-        btnNovo.setPreferredSize(
-                new java.awt.Dimension(86, 38)
-        );
+        btnNovo.setBackground(new java.awt.Color(0, 78, 174));
+        btnNovo.setForeground(new java.awt.Color(255, 255, 255));
+        btnNovo.setFocusPainted(false);
 
-        btnSalvar.setBackground(
-                new java.awt.Color(53, 158, 77)
-        );
-        btnSalvar.setFont(tituloFont);
-        btnSalvar.setForeground(java.awt.Color.WHITE);
+        btnSalvar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnSalvar.setText("Salvar");
-        btnSalvar.setPreferredSize(
-                new java.awt.Dimension(87, 38)
-        );
+        btnSalvar.setBackground(new java.awt.Color(53, 158, 77));
+        btnSalvar.setForeground(new java.awt.Color(255, 255, 255));
+        btnSalvar.setFocusPainted(false);
 
-        btnEditar.setBackground(
-                new java.awt.Color(228, 146, 10)
-        );
-        btnEditar.setFont(tituloFont);
-        btnEditar.setForeground(java.awt.Color.WHITE);
+        btnEditar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
         btnEditar.setText("Editar");
-        btnEditar.setPreferredSize(
-                new java.awt.Dimension(95, 38)
+        btnEditar.setBackground(new java.awt.Color(228, 146, 10));
+        btnEditar.setForeground(new java.awt.Color(255, 255, 255));
+        btnEditar.setFocusPainted(false);
+
+        javax.swing.GroupLayout pnlFormularioLayout = new javax.swing.GroupLayout(pnlFormulario);
+        pnlFormulario.setLayout(pnlFormularioLayout);
+        pnlFormularioLayout.setHorizontalGroup(
+            pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlFormularioLayout.createSequentialGroup()
+                .addGap(16, 16, 16)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(lblSecaoRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblSecaoDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(pnlFormularioLayout.createSequentialGroup()
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(lblEquipamento, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblUsuarioRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblDataRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblFinalidade, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblUsuarioDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblObservacaoDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(cmbEquipamento, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(cmbUsuarioRetirada, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(pnlDataRetirada, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(txtFinalidade, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(cmbUsuarioDevolucao, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(txtObservacaoDevolucao, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE))
+                        .addGap(24, 24, 24)
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(lblFuncionario, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblDevolucaoPrevista, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblObservacaoRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(lblDataDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 130, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(10, 10, 10)
+                        .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(cmbFuncionario, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(cmbStatus, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(pnlDevolucaoPrevista, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(txtObservacaoRetirada, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
+                            .addComponent(pnlDataDevolucao, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)))
+                    .addGroup(pnlFormularioLayout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(10, 10, 10)
+                        .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(16, 16, 16))
+        );
+        pnlFormularioLayout.setVerticalGroup(
+            pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlFormularioLayout.createSequentialGroup()
+                .addGap(16, 16, 16)
+                .addComponent(lblSecaoRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(8, 8, 8)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblEquipamento, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbEquipamento, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblFuncionario, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbFuncionario, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblUsuarioRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbUsuarioRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblDataRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlDataRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblDevolucaoPrevista, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlDevolucaoPrevista, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblFinalidade, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtFinalidade, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblObservacaoRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtObservacaoRetirada, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGap(8, 8, 8)
+                .addComponent(lblSecaoDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(8, 8, 8)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblUsuarioDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbUsuarioDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblDataDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlDataDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblObservacaoDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtObservacaoDevolucao, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(10, 10, 10)
+                .addGap(8, 8, 8)
+                .addGroup(pnlFormularioLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnNovo, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnSalvar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(16, 16, 16))
         );
 
-        btnExcluir.setBackground(
-                new java.awt.Color(214, 62, 50)
+        lblTituloPesquisa.setText("Pesquisa");
+        lblTituloPesquisa.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTituloPesquisa.setForeground(new java.awt.Color(0, 78, 174));
+
+        pnlPesquisa.setBackground(new java.awt.Color(255, 255, 255));
+        pnlPesquisa.setBorder(new javax.swing.border.LineBorder(new java.awt.Color(179, 179, 179), 1, true));
+        lblBuscar.setText("Buscar:");
+        lblBuscar.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+
+        javax.swing.GroupLayout pnlPesquisaLayout = new javax.swing.GroupLayout(pnlPesquisa);
+        pnlPesquisa.setLayout(pnlPesquisaLayout);
+        pnlPesquisaLayout.setHorizontalGroup(
+            pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPesquisaLayout.createSequentialGroup()
+                .addGap(16, 16, 16)
+                .addComponent(lblBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(10, 10, 10)
+                .addComponent(txtBuscar, javax.swing.GroupLayout.DEFAULT_SIZE, 500, Short.MAX_VALUE)
+                .addGap(16, 16, 16))
         );
-        btnExcluir.setFont(tituloFont);
-        btnExcluir.setForeground(java.awt.Color.WHITE);
-        btnExcluir.setText("Excluir");
-        btnExcluir.setPreferredSize(
-                new java.awt.Dimension(96, 38)
+        pnlPesquisaLayout.setVerticalGroup(
+            pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPesquisaLayout.createSequentialGroup()
+                .addGap(12, 12, 12)
+                .addGroup(pnlPesquisaLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(lblBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(txtBuscar, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(12, 12, 12))
         );
 
-        tblDados.setModel(
-                new DefaultTableModel(
-                        new Object[][]{},
-                        new String[]{
-                            "ID",
-                            "Equipamento",
-                            "Funcionário",
-                            "Status",
-                            "Retirada",
-                            "Devolução prevista",
-                            "Devolução"
-                        }
-                ) {
-                    @Override
-                    public boolean isCellEditable(
-                            int row,
-                            int column
-                    ) {
-                        return false;
-                    }
-                }
-        );
+        lblTituloLista.setText("Lista de Movimentações");
+        lblTituloLista.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblTituloLista.setForeground(new java.awt.Color(0, 78, 174));
+
+        tblDados.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "ID", "Equipamento", "Funcionário", "Status", "Retirada", "Devolver até", "Devolução"
+            }
+        ) {
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false
+            };
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        tblDados.setRowHeight(26);
 
         scrollDados.setViewportView(tblDados);
 
-        javax.swing.GroupLayout formularioLayout
-                = new javax.swing.GroupLayout(
-                        pnlFormulario
-                );
-
-        pnlFormulario.setLayout(formularioLayout);
-
-        formularioLayout.setHorizontalGroup(
-                formularioLayout
-                        .createSequentialGroup()
-                        .addGap(14)
-                        .addGroup(
-                                formularioLayout
-                                        .createParallelGroup(
-                                                javax.swing.GroupLayout.Alignment.LEADING
-                                        )
-                                        .addComponent(
-                                                pnlCampos,
-                                                0,
-                                                665,
-                                                Short.MAX_VALUE
-                                        )
-                                        .addGroup(
-                                                javax.swing.GroupLayout.Alignment.TRAILING,
-                                                formularioLayout
-                                                        .createSequentialGroup()
-                                                        .addComponent(
-                                                                btnNovo,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                                86,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                                        )
-                                                        .addGap(12)
-                                                        .addComponent(
-                                                                btnSalvar,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                                87,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                                        )
-                                                        .addGap(12)
-                                                        .addComponent(
-                                                                btnEditar,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                                95,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                                        )
-                                                        .addGap(8)
-                                                        .addComponent(
-                                                                btnExcluir,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                                96,
-                                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                                        )
-                                        )
-                        )
-                        .addGap(14)
+        javax.swing.GroupLayout pnlPrincipalLayout = new javax.swing.GroupLayout(pnlPrincipal);
+        pnlPrincipal.setLayout(pnlPrincipalLayout);
+        pnlPrincipalLayout.setHorizontalGroup(
+            pnlPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPrincipalLayout.createSequentialGroup()
+                .addGap(24, 24, 24)
+                .addGroup(pnlPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(lblTituloFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlFormulario, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lblTituloPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(pnlPesquisa, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(lblTituloLista, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(scrollDados, javax.swing.GroupLayout.DEFAULT_SIZE, 900, Short.MAX_VALUE))
+                .addGap(24, 24, 24))
+        );
+        pnlPrincipalLayout.setVerticalGroup(
+            pnlPrincipalLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(pnlPrincipalLayout.createSequentialGroup()
+                .addGap(20, 20, 20)
+                .addComponent(lblTituloFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
+                .addComponent(pnlFormulario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(16, 16, 16)
+                .addComponent(lblTituloPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
+                .addComponent(pnlPesquisa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(16, 16, 16)
+                .addComponent(lblTituloLista, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(6, 6, 6)
+                .addComponent(scrollDados, javax.swing.GroupLayout.DEFAULT_SIZE, 170, Short.MAX_VALUE)
+                .addGap(20, 20, 20))
         );
 
-        formularioLayout.setVerticalGroup(
-                formularioLayout
-                        .createSequentialGroup()
-                        .addGap(14)
-                        .addComponent(
-                                pnlCampos,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                250,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
-                        .addGap(12)
-                        .addGroup(
-                                formularioLayout
-                                        .createParallelGroup(
-                                                javax.swing.GroupLayout.Alignment.BASELINE
-                                        )
-                                        .addComponent(
-                                                btnNovo,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                38,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                        )
-                                        .addComponent(
-                                                btnSalvar,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                38,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                        )
-                                        .addComponent(
-                                                btnEditar,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                38,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                        )
-                                        .addComponent(
-                                                btnExcluir,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                38,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                        )
-                        )
-                        .addGap(14)
-        );
-
-        javax.swing.GroupLayout pesquisaLayout
-                = new javax.swing.GroupLayout(
-                        pnlPesquisa
-                );
-
-        pnlPesquisa.setLayout(pesquisaLayout);
-
-        pesquisaLayout.setHorizontalGroup(
-                pesquisaLayout
-                        .createSequentialGroup()
-                        .addGap(16)
-                        .addComponent(
-                                lblBuscar,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                62,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
-                        .addGap(18)
-                        .addComponent(
-                                txtBuscar,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                486,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
-                        .addGap(16)
-        );
-
-        pesquisaLayout.setVerticalGroup(
-                pesquisaLayout
-                        .createSequentialGroup()
-                        .addGap(14)
-                        .addGroup(
-                                pesquisaLayout
-                                        .createParallelGroup(
-                                                javax.swing.GroupLayout.Alignment.BASELINE
-                                        )
-                                        .addComponent(lblBuscar)
-                                        .addComponent(
-                                                txtBuscar,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                        )
-                        )
-                        .addGap(14)
-        );
-
-        javax.swing.GroupLayout painelLayout
-                = new javax.swing.GroupLayout(
-                        jPanel1
-                );
-
-        jPanel1.setLayout(painelLayout);
-
-        painelLayout.setHorizontalGroup(
-                painelLayout
-                        .createSequentialGroup()
-                        .addGap(25)
-                        .addGroup(
-                                painelLayout
-                                        .createParallelGroup(
-                                                javax.swing.GroupLayout.Alignment.LEADING
-                                        )
-                                        .addComponent(lblTituloFormulario)
-                                        .addComponent(
-                                                pnlFormulario,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                                javax.swing.GroupLayout.PREFERRED_SIZE
-                                        )
-                                        .addComponent(lblTituloPesquisa)
-                                        .addComponent(
-                                                pnlPesquisa,
-                                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                                Short.MAX_VALUE
-                                        )
-                                        .addComponent(lblTituloLista)
-                                        .addComponent(
-                                                scrollDados,
-                                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                                Short.MAX_VALUE
-                                        )
-                        )
-                        .addGap(25)
-        );
-
-        painelLayout.setVerticalGroup(
-                painelLayout
-                        .createSequentialGroup()
-                        .addGap(31)
-                        .addComponent(lblTituloFormulario)
-                        .addGap(6)
-                        .addComponent(
-                                pnlFormulario,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
-                        .addGap(18)
-                        .addComponent(lblTituloPesquisa)
-                        .addGap(6)
-                        .addComponent(
-                                pnlPesquisa,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
-                        .addGap(20)
-                        .addComponent(lblTituloLista)
-                        .addGap(6)
-                        .addComponent(
-                                scrollDados,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                189,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
-                        .addGap(20)
-        );
-
-        javax.swing.GroupLayout layout
-                = new javax.swing.GroupLayout(
-                        getContentPane()
-                );
-
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-
         layout.setHorizontalGroup(
-                layout
-                        .createSequentialGroup()
-                        .addGap(14)
-                        .addComponent(
-                                jPanel1,
-                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                Short.MAX_VALUE
-                        )
-                        .addGap(15)
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(pnlPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
-
         layout.setVerticalGroup(
-                layout
-                        .createSequentialGroup()
-                        .addComponent(
-                                jPanel1,
-                                javax.swing.GroupLayout.PREFERRED_SIZE,
-                                javax.swing.GroupLayout.DEFAULT_SIZE,
-                                javax.swing.GroupLayout.PREFERRED_SIZE
-                        )
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(pnlPrincipal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
 
         pack();
         setLocationRelativeTo(null);
-    }
-    // </editor-fold>//GEN-END:initComponents
+    }// </editor-fold>//GEN-END:initComponents
 
     /**
      * Permite executar esta JFrame isoladamente pelo NetBeans.
@@ -1481,41 +682,47 @@ public class MovimentacaoView extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnEditar;
-    private javax.swing.JButton btnExcluir;
     private javax.swing.JButton btnNovo;
     private javax.swing.JButton btnSalvar;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JLabel lblCampo1;
-    private javax.swing.JLabel lblCampo2;
-    private javax.swing.JLabel lblCampo3;
-    private javax.swing.JLabel lblCampo4;
-    private javax.swing.JLabel lblCampo5;
-    private javax.swing.JLabel lblCampo6;
-    private javax.swing.JLabel lblCampo7;
-    private javax.swing.JLabel lblCampo8;
-    private javax.swing.JLabel lblCampo9;
-    private javax.swing.JLabel lblCampo10;
-    private javax.swing.JLabel lblCampo11;
+    private com.toedter.calendar.JDateChooser calDataDevolucao;
+    private com.toedter.calendar.JDateChooser calDataRetirada;
+    private com.toedter.calendar.JDateChooser calDevolucaoPrevista;
+    private javax.swing.JComboBox<ComboItem> cmbEquipamento;
+    private javax.swing.JComboBox<ComboItem> cmbFuncionario;
+    private javax.swing.JComboBox<ComboItem> cmbStatus;
+    private javax.swing.JComboBox<ComboItem> cmbUsuarioDevolucao;
+    private javax.swing.JComboBox<ComboItem> cmbUsuarioRetirada;
     private javax.swing.JLabel lblBuscar;
+    private javax.swing.JLabel lblDataDevolucao;
+    private javax.swing.JLabel lblDataRetirada;
+    private javax.swing.JLabel lblDevolucaoPrevista;
+    private javax.swing.JLabel lblEquipamento;
+    private javax.swing.JLabel lblFinalidade;
+    private javax.swing.JLabel lblFuncionario;
+    private javax.swing.JLabel lblObservacaoDevolucao;
+    private javax.swing.JLabel lblObservacaoRetirada;
+    private javax.swing.JLabel lblSecaoDevolucao;
+    private javax.swing.JLabel lblSecaoRetirada;
+    private javax.swing.JLabel lblStatus;
     private javax.swing.JLabel lblTituloFormulario;
     private javax.swing.JLabel lblTituloLista;
     private javax.swing.JLabel lblTituloPesquisa;
-    private javax.swing.JPanel pnlCampos;
+    private javax.swing.JLabel lblUsuarioDevolucao;
+    private javax.swing.JLabel lblUsuarioRetirada;
+    private javax.swing.JPanel pnlDataDevolucao;
+    private javax.swing.JPanel pnlDataRetirada;
+    private javax.swing.JPanel pnlDevolucaoPrevista;
     private javax.swing.JPanel pnlFormulario;
     private javax.swing.JPanel pnlPesquisa;
+    private javax.swing.JPanel pnlPrincipal;
     private javax.swing.JScrollPane scrollDados;
+    private javax.swing.JSpinner spnHoraDevolucao;
+    private javax.swing.JSpinner spnHoraPrevista;
+    private javax.swing.JSpinner spnHoraRetirada;
     private javax.swing.JTable tblDados;
-    private javax.swing.JTextField txtCampo1;
-    private javax.swing.JTextField txtCampo2;
-    private javax.swing.JTextField txtCampo3;
-    private javax.swing.JTextField txtCampo4;
-    private javax.swing.JTextField txtCampo5;
-    private javax.swing.JTextField txtCampo6;
-    private javax.swing.JTextField txtCampo7;
-    private javax.swing.JTextField txtCampo8;
-    private javax.swing.JTextField txtCampo9;
-    private javax.swing.JTextField txtCampo10;
-    private javax.swing.JTextField txtCampo11;
     private javax.swing.JTextField txtBuscar;
+    private javax.swing.JTextField txtFinalidade;
+    private javax.swing.JTextField txtObservacaoDevolucao;
+    private javax.swing.JTextField txtObservacaoRetirada;
     // End of variables declaration//GEN-END:variables
 }
